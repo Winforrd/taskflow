@@ -6,6 +6,8 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 @TableName("sys_user")
 public class SysUser {
@@ -52,12 +54,12 @@ public class SysUser {
     /**
      * 创建时间
      */
-    private String createdTime;
+    private LocalDateTime createdTime;
 
     /**
      * 修改时间
      */
-    private String updatedTime;
+    private LocalDateTime updatedTime;
 
     /**
      * 逻辑删除
