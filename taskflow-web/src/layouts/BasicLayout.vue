@@ -10,7 +10,10 @@
       class="sidebar"
     >
 
-      <div class="logo">
+      <div
+        class="logo"
+        @click="goDashboard"
+      >
 
         TaskFlow
 
@@ -22,6 +25,7 @@
         :default-active="$route.path"
       >
 
+        <!-- 工作台 -->
         <el-menu-item
           index="/dashboard"
         >
@@ -30,10 +34,19 @@
 
         </el-menu-item>
 
+
+        <!-- 个人中心 -->
+        <el-menu-item
+          index="/profile"
+        >
+
+          个人中心
+
+        </el-menu-item>
+
       </el-menu>
 
     </el-aside>
-
 
 
     <el-container>
@@ -43,42 +56,106 @@
         class="header"
       >
 
-        <div>
+        <!-- 左侧标题 -->
+        <div
+          class="header-title"
+        >
 
           在线协同任务管理平台
 
         </div>
 
 
+        <!-- 右侧用户区域 -->
         <div
           class="user-area"
         >
 
-          <span>
-
-            {{
-              userStore.userInfo?.nickname
-              ||
-              userStore.userInfo?.username
-            }}
-
-          </span>
-
-
-          <el-button
-            link
-            type="danger"
-            @click="handleLogout"
+          <el-dropdown
+            trigger="click"
+            @command="handleCommand"
           >
 
-            退出登录
+            <div
+              class="user-dropdown"
+            >
 
-          </el-button>
+              <!-- 用户头像 -->
+              <el-avatar
+                :size="34"
+                :src="
+                  userStore.userInfo?.avatar
+                "
+              >
+
+                {{
+                  getAvatarText()
+                }}
+
+              </el-avatar>
+
+
+              <!-- 用户昵称 -->
+              <span
+                class="username"
+              >
+
+                {{
+                  userStore.userInfo?.nickname
+                  ||
+                  userStore.userInfo?.username
+                  ||
+                  '用户'
+                }}
+
+              </span>
+
+
+              <!-- 下拉箭头 -->
+              <span
+                class="arrow"
+              >
+
+                ▼
+
+              </span>
+
+            </div>
+
+
+            <template #dropdown>
+
+              <el-dropdown-menu>
+
+                <!-- 个人中心 -->
+                <el-dropdown-item
+                  command="profile"
+                >
+
+                  个人中心
+
+                </el-dropdown-item>
+
+
+                <!-- 退出 -->
+                <el-dropdown-item
+                  divided
+                  command="logout"
+                >
+
+                  退出登录
+
+                </el-dropdown-item>
+
+              </el-dropdown-menu>
+
+            </template>
+
+          </el-dropdown>
 
         </div>
 
       </el-header>
-
 
 
       <!-- 页面主体 -->
@@ -103,21 +180,18 @@ import {
   onMounted
 } from 'vue'
 
-
 import {
   useRouter
 } from 'vue-router'
-
 
 import {
   useUserStore
 } from '@/stores/user'
 
-
 import {
-  ElMessage
+  ElMessage,
+  ElMessageBox
 } from 'element-plus'
-
 
 
 const router =
@@ -128,18 +202,21 @@ const userStore =
   useUserStore()
 
 
-
+/**
+ * 页面初始化
+ *
+ * 浏览器刷新后：
+ *
+ * Pinia 内存里的 userInfo 会消失
+ *
+ * 但是 localStorage 中的 Token
+ * 依然存在
+ *
+ * 所以重新向后端获取用户信息
+ */
 onMounted(
   async () => {
 
-    /**
-     * 浏览器刷新以后
-     * Pinia内存中的userInfo会丢失
-     *
-     * 但是localStorage里面Token还在
-     *
-     * 所以重新获取用户信息
-     */
     if (
       !userStore.userInfo
       &&
@@ -154,9 +231,15 @@ onMounted(
 
       catch {
 
+        /**
+         * Token无效
+         * 或获取用户失败
+         */
         userStore.clearLogin()
 
-        router.push('/login')
+        router.push(
+          '/login'
+        )
 
       }
 
@@ -166,20 +249,157 @@ onMounted(
 )
 
 
+/**
+ * 获取头像显示文字
+ *
+ * 没有头像图片时：
+ *
+ * 优先显示昵称第一个字符
+ *
+ * 没有昵称则显示用户名
+ */
+function getAvatarText() {
 
-async function handleLogout() {
+  const nickname =
+    userStore.userInfo?.nickname
 
-  await userStore.logout()
+  if (nickname) {
+
+    return nickname.charAt(0)
+  }
+
+  const username =
+    userStore.userInfo?.username
+
+  if (username) {
+
+    return username.charAt(0)
+  }
+
+  return 'U'
+}
 
 
-  ElMessage.success(
-    '已退出登录'
-  )
-
+/**
+ * 点击Logo
+ */
+function goDashboard() {
 
   router.push(
-    '/login'
+    '/dashboard'
   )
+}
+
+
+/**
+ * 用户下拉菜单
+ */
+async function handleCommand(
+  command: string
+) {
+
+  /**
+   * 个人中心
+   */
+  if (
+    command === 'profile'
+  ) {
+
+    router.push(
+      '/profile'
+    )
+
+    return
+  }
+
+
+  /**
+   * 退出登录
+   */
+  if (
+    command === 'logout'
+  ) {
+
+    await handleLogout()
+
+  }
+
+}
+
+
+/**
+ * 退出登录
+ */
+async function handleLogout() {
+
+  try {
+
+    /**
+     * 二次确认
+     */
+    await ElMessageBox.confirm(
+      '确定要退出当前账号吗？',
+      '退出登录',
+      {
+        confirmButtonText:
+          '确定',
+
+        cancelButtonText:
+          '取消',
+
+        type:
+          'warning'
+      }
+    )
+
+  }
+
+  catch {
+
+    /**
+     * 用户点击取消
+     */
+    return
+  }
+
+
+  try {
+
+    /**
+     * 调用后端退出接口
+     */
+    await userStore.logout()
+
+
+    ElMessage.success(
+      '已退出登录'
+    )
+
+
+    /**
+     * 回到登录页
+     */
+    router.push(
+      '/login'
+    )
+
+  }
+
+  catch {
+
+    /**
+     * 如果后端退出接口异常
+     *
+     * 也要保证本地登录状态被清除
+     */
+    userStore.clearLogin()
+
+
+    router.push(
+      '/login'
+    )
+
+  }
 
 }
 
@@ -188,6 +408,9 @@ async function handleLogout() {
 
 <style scoped>
 
+/**
+ * 整体布局
+ */
 .layout {
 
   width: 100%;
@@ -197,6 +420,9 @@ async function handleLogout() {
 }
 
 
+/**
+ * 左侧菜单
+ */
 .sidebar {
 
   background: white;
@@ -207,6 +433,9 @@ async function handleLogout() {
 }
 
 
+/**
+ * Logo
+ */
 .logo {
 
   height: 64px;
@@ -224,10 +453,19 @@ async function handleLogout() {
   border-bottom:
     1px solid #ebeef5;
 
+  cursor: pointer;
+
+  user-select: none;
+
 }
 
 
+/**
+ * 顶部栏
+ */
 .header {
+
+  height: 64px;
 
   background: white;
 
@@ -241,24 +479,111 @@ async function handleLogout() {
   justify-content:
     space-between;
 
+  padding:
+    0 24px;
+
 }
 
 
+/**
+ * 系统标题
+ */
+.header-title {
+
+  font-size: 18px;
+
+  font-weight: 500;
+
+  color: #303133;
+
+}
+
+
+/**
+ * 用户区域
+ */
 .user-area {
 
   display: flex;
 
   align-items: center;
 
-  gap: 20px;
+}
+
+
+/**
+ * 用户下拉区域
+ */
+.user-dropdown {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  cursor: pointer;
+
+  padding:
+    5px 8px;
+
+  border-radius:
+    6px;
+
+  transition:
+    background 0.2s;
 
 }
 
 
+/**
+ * 鼠标移入
+ */
+.user-dropdown:hover {
+
+  background:
+    #f5f7fa;
+
+}
+
+
+/**
+ * 用户名
+ */
+.username {
+
+  font-size: 14px;
+
+  color: #303133;
+
+}
+
+
+/**
+ * 下拉箭头
+ */
+.arrow {
+
+  font-size: 10px;
+
+  color: #909399;
+
+}
+
+
+/**
+ * 页面主体
+ */
 .main {
 
   background:
     #f5f7fa;
+
+  padding:
+    20px;
+
+  overflow-y:
+    auto;
 
 }
 

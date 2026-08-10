@@ -13,7 +13,7 @@ public enum ErrorCode {
     ),
 
     PASSWORD_TOO_SHORT(
-            40003,
+            403,
             "密码长度不能少于6位"
     ),
 
@@ -28,38 +28,52 @@ public enum ErrorCode {
     ),
 
     USER_NOT_FOUND(
-            40401,
+            401,
             "用户不存在"
     ),
 
     USERNAME_EXISTS(
-            40001,
+            401,
             "用户名已经存在"
     ),
 
     PASSWORD_ERROR(
-            40002,
+            402,
             "用户名或密码错误"
     ),
 
     USER_DISABLED(
-            40301,
+            401,
             "账号已被禁用"
     ),
 
     TEAM_NOT_FOUND(
-            40402,
+            402,
             "团队不存在"
     ),
 
     PROJECT_NOT_FOUND(
-            40403,
+            403,
             "项目不存在"
     ),
 
     TASK_NOT_FOUND(
-            40404,
+            404,
             "任务不存在"
+    ),
+    EMAIL_EXISTS(
+            404,
+            "该邮箱已经被使用"
+    ),
+
+    OLD_PASSWORD_ERROR(
+            405,
+            "原密码错误"
+    ),
+
+    NEW_PASSWORD_SAME(
+            407,
+            "新密码不能与原密码相同"
     );
 
     private final Integer code;

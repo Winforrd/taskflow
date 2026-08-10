@@ -3,20 +3,16 @@ import {
   createWebHistory
 } from 'vue-router'
 
-
 import type {
   RouteRecordRaw
 } from 'vue-router'
-
 
 import {
   getToken
 } from '@/utils/auth'
 
 
-
 const routes: RouteRecordRaw[] = [
-
 
   /**
    * 登录
@@ -36,7 +32,6 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
-
   /**
    * 注册
    */
@@ -55,9 +50,8 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
-
   /**
-   * 工作台
+   * 主布局
    */
   {
     path: '/',
@@ -73,13 +67,18 @@ const routes: RouteRecordRaw[] = [
 
     children: [
 
+      /**
+       * 默认跳转工作台
+       */
       {
         path: '',
 
         redirect: '/dashboard'
       },
 
-
+      /**
+       * 工作台
+       */
       {
         path: 'dashboard',
 
@@ -91,13 +90,32 @@ const routes: RouteRecordRaw[] = [
           ),
 
         meta: {
-          requiresAuth: true
+          requiresAuth: true,
+          title: '工作台'
+        }
+      },
+
+      /**
+       * 个人中心
+       */
+      {
+        path: 'profile',
+
+        name: 'Profile',
+
+        component: () =>
+          import(
+            '@/views/user/ProfileView.vue'
+          ),
+
+        meta: {
+          requiresAuth: true,
+          title: '个人中心'
         }
       }
 
     ]
   },
-
 
   /**
    * 未匹配地址
@@ -111,7 +129,6 @@ const routes: RouteRecordRaw[] = [
 ]
 
 
-
 const router =
   createRouter({
 
@@ -123,9 +140,8 @@ const router =
   })
 
 
-
 /**
- * 路由守卫
+ * 全局前置路由守卫
  */
 router.beforeEach(
   (
@@ -134,17 +150,17 @@ router.beforeEach(
     next
   ) => {
 
-
     const token =
       getToken()
 
-
     /**
-     * 未登录
+     * 需要登录
+     * 但本地没有Token
      */
     if (
       to.meta.requiresAuth
-      && !token
+      &&
+      !token
     ) {
 
       next({
@@ -152,24 +168,18 @@ router.beforeEach(
         path: '/login',
 
         query: {
-
           redirect:
             to.fullPath
-
         }
 
       })
 
-
       return
-
     }
 
-
-
     /**
-     * 已经登录
-     * 又访问登录注册页
+     * 已登录状态下
+     * 不允许再次进入登录页或注册页
      */
     if (
       token
@@ -183,12 +193,8 @@ router.beforeEach(
 
       next('/dashboard')
 
-
       return
-
     }
-
-
 
     next()
 

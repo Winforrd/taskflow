@@ -54,3 +54,20 @@ export interface LoginResult {
   nickname: string
 
 }
+
+export interface UpdateProfileRequest {
+
+  nickname: string
+
+  email?: string
+
+  phone?: string
+}
+
+
+export interface ChangePasswordRequest {
+
+  oldPassword: string
+
+  newPassword: string
+}

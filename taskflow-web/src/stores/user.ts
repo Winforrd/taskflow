@@ -6,16 +6,15 @@ import {
   ref
 } from 'vue'
 
-
 import {
   loginApi,
   logoutApi
 } from '@/api/auth'
 
 import {
-  getProfileApi
+  getProfileApi,
+  updateProfileApi
 } from '@/api/user'
-
 
 import {
   getToken,
@@ -23,12 +22,11 @@ import {
   removeToken
 } from '@/utils/auth'
 
-
 import type {
   LoginRequest,
-  UserInfo
+  UserInfo,
+  UpdateProfileRequest
 } from '@/types/user'
-
 
 
 export const useUserStore =
@@ -36,66 +34,70 @@ defineStore(
   'user',
   () => {
 
+    const token =
+      ref<string | null>(
+        getToken()
+      )
 
-    /**
-     * Token
-     */
-    const token = ref<string | null>(
-      getToken()
-    )
-
-
-    /**
-     * 当前用户
-     */
     const userInfo =
-      ref<UserInfo | null>(null)
-
+      ref<UserInfo | null>(
+        null
+      )
 
 
     /**
      * 登录
      */
     async function login(
-      loginForm: LoginRequest
+      form: LoginRequest
     ) {
 
       const result =
-        await loginApi(loginForm)
-
+        await loginApi(form)
 
       token.value =
         result.data.token
-
 
       setToken(
         result.data.token
       )
 
-
       return result.data
-
     }
 
 
-
     /**
-     * 获取用户信息
+     * 获取当前用户
      */
     async function getUserInfo() {
 
       const result =
         await getProfileApi()
 
-
       userInfo.value =
         result.data
 
-
       return result.data
-
     }
 
+
+    /**
+     * 修改用户资料
+     */
+    async function updateProfile(
+      form: UpdateProfileRequest
+    ) {
+
+      await updateProfileApi(
+        form
+      )
+
+      /*
+       * 修改成功后
+       * 重新获取最新用户信息
+       */
+      await getUserInfo()
+    }
 
 
     /**
@@ -111,20 +113,14 @@ defineStore(
 
       finally {
 
-        token.value = null
-
-        userInfo.value = null
-
-        removeToken()
+        clearLogin()
 
       }
-
     }
 
 
-
     /**
-     * 本地清除登录状态
+     * 清除本地登录状态
      */
     function clearLogin() {
 
@@ -133,7 +129,6 @@ defineStore(
       userInfo.value = null
 
       removeToken()
-
     }
 
 
@@ -147,10 +142,11 @@ defineStore(
 
       getUserInfo,
 
+      updateProfile,
+
       logout,
 
       clearLogin
-
     }
 
   }

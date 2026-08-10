@@ -5,9 +5,10 @@ import type {
 } from '@/types/api'
 
 import type {
-  UserInfo
+  UserInfo,
+  UpdateProfileRequest,
+  ChangePasswordRequest
 } from '@/types/user'
-
 
 
 /**
@@ -21,5 +22,38 @@ export function getProfileApi() {
   >(
     '/users/profile'
   )
+}
 
+
+/**
+ * 修改个人资料
+ */
+export function updateProfileApi(
+  data: UpdateProfileRequest
+) {
+
+  return request.put<
+    any,
+    ApiResponse<null>
+  >(
+    '/users/profile',
+    data
+  )
+}
+
+
+/**
+ * 修改密码
+ */
+export function changePasswordApi(
+  data: ChangePasswordRequest
+) {
+
+  return request.put<
+    any,
+    ApiResponse<null>
+  >(
+    '/users/password',
+    data
+  )
 }
