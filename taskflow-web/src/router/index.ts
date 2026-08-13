@@ -32,6 +32,7 @@ const routes: RouteRecordRaw[] = [
     }
   },
 
+
   /**
    * 注册
    */
@@ -49,6 +50,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: false
     }
   },
+
 
   /**
    * 主布局
@@ -76,6 +78,7 @@ const routes: RouteRecordRaw[] = [
         redirect: '/dashboard'
       },
 
+
       /**
        * 工作台
        */
@@ -94,6 +97,73 @@ const routes: RouteRecordRaw[] = [
           title: '工作台'
         }
       },
+
+
+      /**
+       * 我的团队
+       */
+      {
+        path: 'teams',
+
+        name: 'Teams',
+
+        component: () =>
+          import(
+            '@/views/team/TeamListView.vue'
+          ),
+
+        meta: {
+          requiresAuth: true,
+          title: '我的团队'
+        }
+      },
+
+
+      /**
+       * 团队详情
+       *
+       * 例如：
+       * /teams/1
+       */
+      {
+        path: 'teams/:teamId',
+
+        name: 'TeamDetail',
+
+        component: () =>
+          import(
+            '@/views/team/TeamDetailView.vue'
+          ),
+
+        meta: {
+          requiresAuth: true,
+          title: '团队详情'
+        }
+      },
+
+
+      /**
+       * 团队成员
+       *
+       * 例如：
+       * /teams/1/members
+       */
+      {
+        path: 'teams/:teamId/members',
+
+        name: 'TeamMembers',
+
+        component: () =>
+          import(
+            '@/views/team/TeamMembersView.vue'
+          ),
+
+        meta: {
+          requiresAuth: true,
+          title: '团队成员'
+        }
+      },
+
 
       /**
        * 个人中心
@@ -116,6 +186,7 @@ const routes: RouteRecordRaw[] = [
 
     ]
   },
+
 
   /**
    * 未匹配地址
@@ -153,9 +224,10 @@ router.beforeEach(
     const token =
       getToken()
 
+
     /**
      * 需要登录
-     * 但本地没有Token
+     * 但没有 Token
      */
     if (
       to.meta.requiresAuth
@@ -177,9 +249,10 @@ router.beforeEach(
       return
     }
 
+
     /**
-     * 已登录状态下
-     * 不允许再次进入登录页或注册页
+     * 已登录
+     * 又访问登录页或注册页
      */
     if (
       token
@@ -191,10 +264,13 @@ router.beforeEach(
       )
     ) {
 
-      next('/dashboard')
+      next(
+        '/dashboard'
+      )
 
       return
     }
+
 
     next()
 

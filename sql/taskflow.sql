@@ -16,3 +16,53 @@ CREATE TABLE sys_user (
                           UNIQUE KEY uk_username (username),
                           UNIQUE KEY uk_email (email)
 ) COMMENT='用户表';
+CREATE TABLE team (
+                      id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '团队ID',
+
+                      name VARCHAR(100) NOT NULL COMMENT '团队名称',
+
+                      description VARCHAR(500) DEFAULT NULL COMMENT '团队简介',
+
+                      avatar VARCHAR(255) DEFAULT NULL COMMENT '团队头像',
+
+                      owner_id BIGINT NOT NULL COMMENT '团队所有者用户ID',
+
+                      status TINYINT NOT NULL DEFAULT 1 COMMENT '状态：1正常，0停用',
+
+                      created_by BIGINT NOT NULL COMMENT '创建人',
+
+                      created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                      updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+                      deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+
+                      KEY idx_owner_id (owner_id),
+
+                      KEY idx_created_by (created_by)
+
+) COMMENT='团队表';
+CREATE TABLE team_member (
+                             id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+
+                             team_id BIGINT NOT NULL COMMENT '团队ID',
+
+                             user_id BIGINT NOT NULL COMMENT '用户ID',
+
+                             role_type VARCHAR(20) NOT NULL COMMENT '团队角色：OWNER/ADMIN/MEMBER/READ_ONLY',
+
+                             member_status TINYINT NOT NULL DEFAULT 1 COMMENT '成员状态：1正常，0禁用',
+
+                             joined_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '加入时间',
+
+                             created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                             updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+                             UNIQUE KEY uk_team_user (team_id, user_id),
+
+                             KEY idx_user_id (user_id),
+
+                             KEY idx_team_id (team_id)
+
+) COMMENT='团队成员表';

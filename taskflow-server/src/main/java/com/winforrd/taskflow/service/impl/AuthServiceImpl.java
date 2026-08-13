@@ -31,16 +31,12 @@ public class AuthServiceImpl implements AuthService {
 
         //1. 参数校验
         if (request.getPassword() == null || request.getPassword().length() < 6) {
-            throw new BusinessException(
-                    ErrorCode.PASSWORD_TOO_SHORT
-            );
+            throw new BusinessException(ErrorCode.PASSWORD_TOO_SHORT);
         }
         //2. 查询用户名是否存在
         Long count = sysUserMapper.selectCount(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, request.getUsername()));
         if (count > 0) {
-            throw new BusinessException(
-                    ErrorCode.USERNAME_EXISTS
-            );
+            throw new BusinessException(ErrorCode.USERNAME_EXISTS);
         }
         //3. 创建用户
         SysUser user = new SysUser();user.setUsername(request.getUsername());
@@ -62,22 +58,16 @@ public class AuthServiceImpl implements AuthService {
         //1. 查询用户
         SysUser user = sysUserMapper.selectOne(new LambdaQueryWrapper<SysUser>().eq(SysUser::getUsername, request.getUsername()));
         if (user == null) {
-            throw new BusinessException(
-                    ErrorCode.PASSWORD_ERROR
-            );
+            throw new BusinessException(ErrorCode.PASSWORD_ERROR);
         }
         //2. 校验密码
         boolean result = PasswordUtil.matches(request.getPassword(), user.getPassword());
         if (!result) {
-            throw new BusinessException(
-                    ErrorCode.PASSWORD_ERROR
-            );
+            throw new BusinessException(ErrorCode.PASSWORD_ERROR);
         }
         //3. 校验账号状态
         if (user.getStatus() == 0) {
-            throw new BusinessException(
-                    ErrorCode.USER_DISABLED
-            );
+            throw new BusinessException(ErrorCode.USER_DISABLED);
 
         }
         //4. Sa-Token登录

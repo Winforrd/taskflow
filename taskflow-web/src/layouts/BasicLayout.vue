@@ -10,6 +10,7 @@
       class="sidebar"
     >
 
+      <!-- Logo -->
       <div
         class="logo"
         @click="goDashboard"
@@ -20,9 +21,10 @@
       </div>
 
 
+      <!-- 左侧导航菜单 -->
       <el-menu
         router
-        :default-active="$route.path"
+        :default-active="activeMenu"
       >
 
         <!-- 工作台 -->
@@ -31,6 +33,16 @@
         >
 
           工作台
+
+        </el-menu-item>
+
+
+        <!-- 我的团队 -->
+        <el-menu-item
+          index="/teams"
+        >
+
+          我的团队
 
         </el-menu-item>
 
@@ -49,6 +61,7 @@
     </el-aside>
 
 
+    <!-- 右侧主体 -->
     <el-container>
 
       <!-- 顶部 -->
@@ -137,7 +150,7 @@
                 </el-dropdown-item>
 
 
-                <!-- 退出 -->
+                <!-- 退出登录 -->
                 <el-dropdown-item
                   divided
                   command="logout"
@@ -177,10 +190,12 @@
 <script setup lang="ts">
 
 import {
+  computed,
   onMounted
 } from 'vue'
 
 import {
+  useRoute,
   useRouter
 } from 'vue-router'
 
@@ -194,6 +209,10 @@ import {
 } from 'element-plus'
 
 
+const route =
+  useRoute()
+
+
 const router =
   useRouter()
 
@@ -203,16 +222,53 @@ const userStore =
 
 
 /**
+ * 当前左侧菜单高亮项
+ *
+ * /teams
+ * /teams/1
+ * /teams/1/members
+ *
+ * 都让“我的团队”保持高亮
+ */
+const activeMenu =
+  computed(
+    () => {
+
+      if (
+        route.path.startsWith(
+          '/teams'
+        )
+      ) {
+
+        return '/teams'
+      }
+
+
+      if (
+        route.path.startsWith(
+          '/profile'
+        )
+      ) {
+
+        return '/profile'
+      }
+
+
+      return '/dashboard'
+
+    }
+  )
+
+
+/**
  * 页面初始化
  *
- * 浏览器刷新后：
+ * 刷新浏览器后：
+ * Pinia 中 userInfo 会丢失
  *
- * Pinia 内存里的 userInfo 会消失
+ * 但 localStorage 中 Token 仍然存在
  *
- * 但是 localStorage 中的 Token
- * 依然存在
- *
- * 所以重新向后端获取用户信息
+ * 所以重新获取用户信息
  */
 onMounted(
   async () => {
@@ -231,11 +287,8 @@ onMounted(
 
       catch {
 
-        /**
-         * Token无效
-         * 或获取用户失败
-         */
         userStore.clearLogin()
+
 
         router.push(
           '/login'
@@ -251,43 +304,44 @@ onMounted(
 
 /**
  * 获取头像显示文字
- *
- * 没有头像图片时：
- *
- * 优先显示昵称第一个字符
- *
- * 没有昵称则显示用户名
  */
 function getAvatarText() {
 
   const nickname =
     userStore.userInfo?.nickname
 
+
   if (nickname) {
 
     return nickname.charAt(0)
+
   }
+
 
   const username =
     userStore.userInfo?.username
 
+
   if (username) {
 
     return username.charAt(0)
+
   }
+
 
   return 'U'
 }
 
 
 /**
- * 点击Logo
+ * 点击 Logo
  */
 function goDashboard() {
 
   router.push(
     '/dashboard'
   )
+
 }
 
 
@@ -334,9 +388,6 @@ async function handleLogout() {
 
   try {
 
-    /**
-     * 二次确认
-     */
     await ElMessageBox.confirm(
       '确定要退出当前账号吗？',
       '退出登录',
@@ -356,18 +407,12 @@ async function handleLogout() {
 
   catch {
 
-    /**
-     * 用户点击取消
-     */
     return
   }
 
 
   try {
 
-    /**
-     * 调用后端退出接口
-     */
     await userStore.logout()
 
 
@@ -376,9 +421,6 @@ async function handleLogout() {
     )
 
 
-    /**
-     * 回到登录页
-     */
     router.push(
       '/login'
     )
@@ -388,9 +430,8 @@ async function handleLogout() {
   catch {
 
     /**
-     * 如果后端退出接口异常
-     *
-     * 也要保证本地登录状态被清除
+     * 即使后端退出接口异常
+     * 也清理前端 Token
      */
     userStore.clearLogin()
 
