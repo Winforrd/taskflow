@@ -66,3 +66,38 @@ CREATE TABLE team_member (
                              KEY idx_team_id (team_id)
 
 ) COMMENT='团队成员表';
+CREATE TABLE team_invitation (
+                                 id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '邀请记录ID',
+
+                                 team_id BIGINT NOT NULL COMMENT '团队ID',
+
+                                 invitation_code VARCHAR(64) NOT NULL COMMENT '邀请码',
+
+                                 creator_id BIGINT NOT NULL COMMENT '创建人用户ID',
+
+                                 default_role VARCHAR(20) NOT NULL DEFAULT 'MEMBER'
+                                     COMMENT '加入后的默认角色：MEMBER/READ_ONLY',
+
+                                 expires_at DATETIME NOT NULL COMMENT '过期时间',
+
+                                 max_uses INT NOT NULL DEFAULT 1 COMMENT '最大使用次数',
+
+                                 used_count INT NOT NULL DEFAULT 0 COMMENT '已使用次数',
+
+                                 status TINYINT NOT NULL DEFAULT 1
+                                     COMMENT '状态：1有效，0禁用',
+
+                                 created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                                 updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                     ON UPDATE CURRENT_TIMESTAMP,
+
+                                 UNIQUE KEY uk_invitation_code (invitation_code),
+
+                                 KEY idx_team_id (team_id),
+
+                                 KEY idx_creator_id (creator_id),
+
+                                 KEY idx_expires_at (expires_at)
+
+) COMMENT='团队邀请表';

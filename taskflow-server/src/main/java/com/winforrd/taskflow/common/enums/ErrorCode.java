@@ -41,7 +41,20 @@ public enum ErrorCode {
 
     TEAM_OWNER_ROLE_CANNOT_CHANGE(403, "不能直接修改团队所有者角色"),
 
-    TEAM_MEMBER_ALREADY_EXISTS(400, "用户已经是该团队成员");
+    TEAM_MEMBER_ALREADY_EXISTS(400, "用户已经是该团队成员"),
+
+    INVITATION_NOT_FOUND(404, "邀请码不存在"),
+
+    INVITATION_EXPIRED(400, "邀请码已过期"),
+
+    INVITATION_DISABLED(400, "邀请码已失效"),
+
+    INVITATION_USED_UP(400, "邀请码使用次数已达到上限"),
+
+    INVITATION_ROLE_INVALID(400, "邀请码默认角色不合法"),
+
+    INVITATION_CONSUME_FAILED(400, "邀请码已失效，请重新获取");
+
 
     private final Integer code;
     private final String message;
