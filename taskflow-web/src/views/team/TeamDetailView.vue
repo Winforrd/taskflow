@@ -1,19 +1,15 @@
 <template>
 
   <div>
-
     <el-card
       v-if="team"
     >
-
       <div class="header">
 
         <div>
-
           <h2>
             {{ team.name }}
           </h2>
-
           <p>
             {{
               team.description
@@ -24,6 +20,14 @@
         </div>
 
         <div>
+
+        <el-button
+        type="primary"
+        plain
+        @click="goProjects"
+        >
+        项目
+      </el-button>
 
           <el-button
             @click="goMembers"
@@ -139,177 +143,86 @@
 
 
 <script setup lang="ts">
-
 import {
   onMounted,
   reactive,
   ref
 } from 'vue'
 
-import {
-  useRoute,
-  useRouter
-} from 'vue-router'
+import { useRoute, useRouter} from 'vue-router'
+import { ElMessage} from 'element-plus'
+import { getTeamDetailApi, updateTeamApi} from '@/api/team'
+import type { TeamDetail} from '@/types/team'
 
-import {
-  ElMessage
-} from 'element-plus'
+const route =useRoute()
+const router =useRouter()
+const teamId = Number(  route.params.teamId)
+const team = ref<TeamDetail | null>(   null )
+const editVisible =ref(false)
+const editForm =reactive({ name: '',description: ''})
 
-import {
-  getTeamDetailApi,
-  updateTeamApi
-} from '@/api/team'
-
-import type {
-  TeamDetail
-} from '@/types/team'
-
-
-const route =
-  useRoute()
-
-
-const router =
-  useRouter()
-
-
-const teamId =
-  Number(
-    route.params.teamId
-  )
-
-
-const team =
-  ref<TeamDetail | null>(
-    null
-  )
-
-
-const editVisible =
-  ref(false)
-
-
-const editForm =
-  reactive({
-
-    name: '',
-
-    description: ''
-
-  })
-
-
-onMounted(
-  async () => {
-
-    await loadTeam()
-
+onMounted(async () => {
+  await loadTeam()
   }
 )
-
-
 async function loadTeam() {
-
-  const result =
-    await getTeamDetailApi(
+  const result =await getTeamDetailApi(
       teamId
     )
-
-  team.value =
-    result.data
+  team.value =  result.data
 }
-
-
 function openEdit() {
-
-  if (!team.value) {
+ if (!team.value) {
     return
   }
-
-  editForm.name =
-    team.value.name
-
-  editForm.description =
-    team.value.description
-    || ''
-
-  editVisible.value = true
+editForm.name =team.value.name
+editForm.description =team.value.description || ''
+editVisible.value = true
 }
-
 
 async function handleUpdate() {
-
   await updateTeamApi(
-    teamId,
-    {
-      name:
-        editForm.name,
-
-      description:
-        editForm.description
-        || undefined
+    teamId,{
+      name: editForm.name,
+      description:editForm.description || undefined
     }
   )
-
-  ElMessage.success(
-    '团队信息修改成功'
-  )
-
+  ElMessage.success( '团队信息修改成功')
   editVisible.value = false
-
-  await loadTeam()
+await loadTeam()
 }
-
-
+function goProjects() {
+  router.push(
+    `/teams/${teamId}/projects`
+  )
+}
 function goMembers() {
-
   router.push(
     `/teams/${teamId}/members`
   )
 }
-
-
 function getRoleName(
   role: string
 ) {
 
   const map:
     Record<string, string> = {
-
       OWNER: '所有者',
-
       ADMIN: '管理员',
-
       MEMBER: '成员',
-
       READ_ONLY: '只读'
-
     }
-
-  return map[role]
-    || role
+  return map[role] || role
 }
 
 </script>
-
-
 <style scoped>
-
 .header {
-
   display: flex;
-
   justify-content: space-between;
-
   align-items: flex-start;
-
 }
-
-
 .header p {
-
   color: #909399;
-
 }
-
 </style>

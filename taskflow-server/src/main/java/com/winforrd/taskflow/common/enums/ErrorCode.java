@@ -53,8 +53,29 @@ public enum ErrorCode {
 
     INVITATION_ROLE_INVALID(400, "邀请码默认角色不合法"),
 
-    INVITATION_CONSUME_FAILED(400, "邀请码已失效，请重新获取");
+    INVITATION_CONSUME_FAILED(400, "邀请码已失效，请重新获取"),
 
+    PROJECT_PERMISSION_DENIED(403, "没有该项目操作权限"),
+
+    PROJECT_MEMBER_NOT_FOUND(404, "项目成员不存在"),
+
+    PROJECT_NOT_FOUND(404, "项目不存在"),
+
+    PROJECT_MEMBER_ALREADY_EXISTS(400, "用户已经是项目成员"),
+
+    PROJECT_OWNER_CANNOT_REMOVE(400, "不能移除项目负责人"),
+
+    PROJECT_OWNER_ROLE_CANNOT_CHANGE(400, "不能修改项目负责人的项目角色"),
+
+    PROJECT_ARCHIVED(400, "项目已归档，不能继续修改"),
+
+    PROJECT_MEMBER_NOT_TEAM_MEMBER(400, "项目成员必须是团队成员"),
+
+    PROJECT_DATE_INVALID(400, "项目截止日期不能早于开始日期"),
+
+    PROJECT_STATUS_INVALID(400, "项目状态不合法"),
+
+    PROJECT_CODE_GENERATE_FAILED(500, "项目编号生成失败");
 
     private final Integer code;
     private final String message;

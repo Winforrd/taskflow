@@ -182,6 +182,65 @@ const routes: RouteRecordRaw[] = [
           requiresAuth: true,
           title: '个人中心'
         }
+      },
+
+      /**
+       * 团队项目列表
+       */
+      {
+        path: 'teams/:teamId/projects',
+
+        name: 'ProjectList',
+
+        component: () =>
+          import(
+            '@/views/project/ProjectListView.vue'
+          ),
+
+        meta: {
+          requiresAuth: true,
+          title: '项目列表'
+        }
+      },
+
+
+      /**
+       * 项目详情
+       */
+      {
+        path: 'projects/:projectId',
+
+        name: 'ProjectDetail',
+
+        component: () =>
+          import(
+            '@/views/project/ProjectDetailView.vue'
+          ),
+
+        meta: {
+          requiresAuth: true,
+          title: '项目详情'
+        }
+      },
+
+
+      /**
+       * 项目成员
+       */
+      {
+        path: 'projects/:projectId/members',
+
+        name: 'ProjectMembers',
+
+        component: () =>
+          import(
+            '@/views/project/ProjectMembersView.vue'
+          ),
+
+        meta: {
+          requiresAuth: true,
+          title: '项目成员'
+        }
       }
 
     ]

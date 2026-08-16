@@ -2,10 +2,12 @@ package com.winforrd.taskflow.common.exception;
 
 import cn.dev33.satoken.exception.NotLoginException;
 import com.winforrd.taskflow.common.result.Result;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -14,7 +16,6 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(NotLoginException.class)
     public Result<Void> handleNotLogin(NotLoginException e) {
-
         return new Result<>(
                 401,
                 "登录状态已失效，请重新登录",
@@ -27,7 +28,6 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException e) {
-
         return new Result<>(
                 e.getCode(),
                 e.getMessage(),
@@ -40,7 +40,6 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Result<Void> handleValidation(MethodArgumentNotValidException e) {
-
         String message = e.getBindingResult()
                         .getFieldErrors()
                         .get(0)
@@ -61,7 +60,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     public Result<Void> handleRuntime(RuntimeException e) {
 
-        e.printStackTrace();
+        log.error("系统运行异常", e);
 
         return new Result<>(
                 500,
@@ -76,7 +75,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
 
-        e.printStackTrace();
+        log.error("系统异常", e);
 
         return new Result<>(
                 500,

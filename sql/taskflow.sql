@@ -101,3 +101,63 @@ CREATE TABLE team_invitation (
                                  KEY idx_expires_at (expires_at)
 
 ) COMMENT='团队邀请表';
+
+CREATE TABLE project (
+                         id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '项目ID',
+
+                         team_id BIGINT NOT NULL COMMENT '所属团队ID',
+
+                         project_code VARCHAR(30) NOT NULL COMMENT '项目编号',
+
+                         name VARCHAR(100) NOT NULL COMMENT '项目名称',
+
+                         description VARCHAR(1000) DEFAULT NULL COMMENT '项目描述',
+
+                         owner_id BIGINT NOT NULL COMMENT '项目负责人用户ID',
+
+                         status VARCHAR(20) NOT NULL DEFAULT 'NOT_STARTED'   COMMENT '项目状态：NOT_STARTED/IN_PROGRESS/COMPLETED/ARCHIVED',
+
+                         start_date DATE DEFAULT NULL COMMENT '开始日期',
+
+                         deadline DATE DEFAULT NULL COMMENT '截止日期',
+
+                         created_by BIGINT NOT NULL COMMENT '创建人用户ID',
+
+                         created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                         updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP    ON UPDATE CURRENT_TIMESTAMP,
+
+                         deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+
+                         UNIQUE KEY uk_team_project_code (team_id,  project_code),
+
+                         KEY idx_project_team_id (team_id),
+
+                         KEY idx_project_owner_id (owner_id),
+
+                         KEY idx_project_status (status)
+
+) COMMENT='项目表';
+
+CREATE TABLE project_member (
+                                id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+
+                                project_id BIGINT NOT NULL COMMENT '项目ID',
+
+                                user_id BIGINT NOT NULL COMMENT '用户ID',
+
+                                role_type VARCHAR(20) NOT NULL
+                                    COMMENT '项目角色：MANAGER/MEMBER/READ_ONLY',
+
+                                joined_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMPCOMMENT '加入项目时间',
+
+                                created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                                updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMPON UPDATE CURRENT_TIMESTAMP,
+
+                                UNIQUE KEY uk_project_user (project_id,user_id),
+
+                                KEY idx_project_member_user_id (user_id),
+
+                                KEY idx_project_member_project_id (project_id)
+) COMMENT='项目成员表';
