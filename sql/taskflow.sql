@@ -222,13 +222,9 @@ CREATE TABLE task_assignee (
                                    user_id
                                    ),
 
-                               KEY idx_assignee_task_id (
-        task_id
-    ),
+                               KEY idx_assignee_task_id (task_id),
 
-                               KEY idx_assignee_user_id (
-        user_id
-    )
+                               KEY idx_assignee_user_id (user_id)
 
 ) COMMENT='任务负责人表';
 
@@ -265,15 +261,32 @@ CREATE TABLE task_activity (
 
                                created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-                               KEY idx_activity_task_id (
-        task_id
-    ),
-
-                               KEY idx_activity_created_time (
-        created_time
-    )
+                               KEY idx_activity_task_id ( task_id),
+                                KEY idx_activity_created_time (created_time)
 
 ) COMMENT='任务动态日志表';
 
+CREATE TABLE task_comment (
+                              id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '评论ID',
 
+                              task_id BIGINT NOT NULL COMMENT '任务ID',
+
+                              user_id BIGINT NOT NULL COMMENT '评论用户ID',
+
+                              content VARCHAR(2000) NOT NULL COMMENT '评论内容',
+
+                              created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                              updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                                  ON UPDATE CURRENT_TIMESTAMP,
+
+                              deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+
+                             KEY idx_task_comment_task_id (task_id),
+
+                             KEY idx_task_comment_user_id (user_id),
+
+                             KEY idx_task_comment_created_time (created_time)
+
+) COMMENT='任务评论表';
 

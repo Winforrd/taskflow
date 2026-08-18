@@ -95,7 +95,15 @@ public enum ErrorCode {
 
     TASK_LAST_ASSIGNEE_CANNOT_REMOVE(400, "进行中或待验收的任务至少需要保留一名负责人"),
 
-    TASK_CONCURRENT_MODIFICATION(409, "任务已被其他用户修改，请刷新后重试");
+    TASK_CONCURRENT_MODIFICATION(409, "任务已被其他用户修改，请刷新后重试"),
+
+    TASK_COMMENT_NOT_FOUND(404, "任务评论不存在"),
+
+    TASK_COMMENT_PERMISSION_DENIED(403, "没有任务评论操作权限"),
+
+    TASK_COMMENT_CONTENT_EMPTY(400, "评论内容不能为空"),
+
+    TASK_COMMENT_CONTENT_TOO_LONG(400, "评论内容不能超过2000个字符");
 
     private final Integer code;
     private final String message;
