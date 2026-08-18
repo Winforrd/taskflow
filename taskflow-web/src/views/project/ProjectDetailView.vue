@@ -49,6 +49,14 @@
 
           </el-button>
 
+          <el-button
+            type="primary"
+            plain
+            @click="goTasks"
+          >
+            任务看板
+          </el-button>
+
 
           <!-- 所有人只要能看项目
                就可以查看成员 -->
@@ -653,6 +661,13 @@ function goProjectList() {
 
   router.push(
     `/teams/${project.value.teamId}/projects`
+  )
+}
+
+function goTasks() {
+
+  router.push(
+    `/projects/${projectId}/tasks`
   )
 }
 

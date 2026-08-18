@@ -161,3 +161,119 @@ CREATE TABLE project_member (
 
                                 KEY idx_project_member_project_id (project_id)
 ) COMMENT='项目成员表';
+
+CREATE TABLE task (
+                      id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '任务ID',
+
+                      project_id BIGINT NOT NULL COMMENT '所属项目ID',
+
+                      title VARCHAR(200) NOT NULL COMMENT '任务标题',
+
+                      description TEXT DEFAULT NULL COMMENT '任务描述',
+
+                      status VARCHAR(30) NOT NULL DEFAULT 'TODO'
+                          COMMENT '任务状态：TODO/IN_PROGRESS/IN_REVIEW/DONE/CANCELLED',
+
+                      priority VARCHAR(20) NOT NULL DEFAULT 'MEDIUM'
+                          COMMENT '优先级：LOW/MEDIUM/HIGH/URGENT',
+
+                      creator_id BIGINT NOT NULL COMMENT '创建人用户ID',
+
+                      start_date DATE DEFAULT NULL COMMENT '开始日期',
+
+                      deadline DATE DEFAULT NULL COMMENT '截止日期',
+
+                      completed_time DATETIME DEFAULT NULL COMMENT '完成时间',
+
+                      version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本号',
+
+                      created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                      updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                          ON UPDATE CURRENT_TIMESTAMP,
+
+                      deleted TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+
+                      KEY idx_task_project_id (project_id),
+
+                      KEY idx_task_creator_id (creator_id),
+
+                      KEY idx_task_status (status),
+
+                      KEY idx_task_priority (priority),
+
+                      KEY idx_task_deadline (deadline)
+
+) COMMENT='任务表';
+
+CREATE TABLE task_assignee (
+                               id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+
+                               task_id BIGINT NOT NULL COMMENT '任务ID',
+
+                               user_id BIGINT NOT NULL COMMENT '负责人用户ID',
+
+                               assigned_by BIGINT NOT NULL COMMENT '指派人用户ID',
+
+                               assigned_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                               UNIQUE KEY uk_task_user (
+                                   task_id,
+                                   user_id
+                                   ),
+
+                               KEY idx_assignee_task_id (
+        task_id
+    ),
+
+                               KEY idx_assignee_user_id (
+        user_id
+    )
+
+) COMMENT='任务负责人表';
+
+CREATE TABLE task_status_record (
+                                    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '状态记录ID',
+
+                                    task_id BIGINT NOT NULL COMMENT '任务ID',
+
+                                    old_status VARCHAR(30) DEFAULT NULL COMMENT '原状态',
+
+                                    new_status VARCHAR(30) NOT NULL COMMENT '新状态',
+
+                                    operator_id BIGINT NOT NULL COMMENT '操作人',
+
+                                    changed_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                                    KEY idx_status_record_task_id (
+        task_id
+    )
+
+) COMMENT='任务状态流转记录表';
+
+CREATE TABLE task_activity (
+                               id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '动态ID',
+
+                               task_id BIGINT NOT NULL COMMENT '任务ID',
+
+                               operator_id BIGINT NOT NULL COMMENT '操作用户',
+
+                               activity_type VARCHAR(40) NOT NULL
+                                   COMMENT 'CREATED/UPDATED/STATUS_CHANGED/ASSIGNEE_ADDED/ASSIGNEE_REMOVED',
+
+                               content VARCHAR(500) DEFAULT NULL COMMENT '动态内容',
+
+                               created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                               KEY idx_activity_task_id (
+        task_id
+    ),
+
+                               KEY idx_activity_created_time (
+        created_time
+    )
+
+) COMMENT='任务动态日志表';
+
+
+

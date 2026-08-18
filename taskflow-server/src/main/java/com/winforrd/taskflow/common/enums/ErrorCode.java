@@ -19,8 +19,6 @@ public enum ErrorCode {
 
     USER_DISABLED(400, "账号已被禁用"),
 
-    TASK_NOT_FOUND(404, "任务不存在"),
-
     EMAIL_EXISTS(400, "该邮箱已经被使用"),
 
     OLD_PASSWORD_ERROR(400, "原密码错误"),
@@ -75,7 +73,29 @@ public enum ErrorCode {
 
     PROJECT_STATUS_INVALID(400, "项目状态不合法"),
 
-    PROJECT_CODE_GENERATE_FAILED(500, "项目编号生成失败");
+    PROJECT_CODE_GENERATE_FAILED(500, "项目编号生成失败"),
+
+    TASK_NOT_FOUND(404, "任务不存在"),
+
+    TASK_PERMISSION_DENIED(403, "没有该任务操作权限"),
+
+    TASK_STATUS_TRANSITION_INVALID(400, "当前任务状态不允许执行该操作"),
+
+    TASK_ASSIGNEE_NOT_PROJECT_MEMBER(400, "任务负责人必须是项目成员"),
+
+    TASK_ASSIGNEE_ALREADY_EXISTS(400, "该用户已经是任务负责人"),
+
+    TASK_ASSIGNEE_NOT_FOUND(404, "任务负责人不存在"),
+
+    TASK_DATE_INVALID(400, "任务截止日期不能早于开始日期"),
+
+    TASK_PRIORITY_INVALID(400, "任务优先级不合法"),
+
+    TASK_ARCHIVED_PROJECT(400, "项目已归档，不能操作任务"),
+
+    TASK_LAST_ASSIGNEE_CANNOT_REMOVE(400, "进行中或待验收的任务至少需要保留一名负责人"),
+
+    TASK_CONCURRENT_MODIFICATION(409, "任务已被其他用户修改，请刷新后重试");
 
     private final Integer code;
     private final String message;

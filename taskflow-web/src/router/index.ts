@@ -241,7 +241,46 @@ const routes: RouteRecordRaw[] = [
           requiresAuth: true,
           title: '项目成员'
         }
-      }
+      },
+
+      /**
+       * 项目任务看板
+       */
+      {
+        path: 'projects/:projectId/tasks',
+
+        name: 'TaskBoard',
+
+        component: () =>
+          import(
+            '@/views/task/TaskBoardView.vue'
+          ),
+
+        meta: {
+          requiresAuth: true,
+          title: '任务看板'
+        }
+      },
+
+
+      /**
+       * 任务详情
+       */
+      {
+        path: 'tasks/:taskId',
+
+        name: 'TaskDetail',
+
+        component: () =>
+          import(
+            '@/views/task/TaskDetailView.vue'
+          ),
+
+        meta: {
+          requiresAuth: true,
+          title: '任务详情'
+        }
+      },
 
     ]
   },
