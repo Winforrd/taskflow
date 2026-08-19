@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.winforrd.taskflow.mapper.DashboardMapper">
+
+
+    <!-- ================================================= -->
+    <!-- 当前用户负责的某状态任务数量 -->
+    <!-- ================================================= -->
+
+    <select
+            id="countAssignedTaskByStatus"
+            resultType="java.lang.Long">
+
+        SELECT COUNT(DISTINCT t.id)
+
+        FROM task t
+
+                 INNER JOIN task_assignee ta
+                            ON ta.task_id = t.id
+
+                 INNER JOIN project p
+                            ON p.id = t.project_id
+
+        WHERE
+            t.deleted = 0
+
+          AND ta.user_id = #{userId}
+
+          AND t.status = #{status}
+
+          AND
+            (
+                p.owner_id = #{userId}
+
+                    OR EXISTS (
+                    SELECT 1
+                    FROM team_member tm
+                    WHERE
+                        tm.team_id = p.team_id
+                      AND tm.user_id = #{userId}
+                )
+
+                    OR EXISTS (
+                    SELECT 1
+                    FROM project_member pm
+                    WHERE
+                        pm.project_id = p.id
+                      AND pm.user_id = #{userId}
+                )
+                )
+
+    </select>
+
+
+    <!-- ================================================= -->
+    <!-- 当前用户负责的全部有效任务 -->
+    <!-- CANCELLED 不参与完成率计算 -->
+    <!-- ================================================= -->
+
+    <select
+            id="countAssignedTasks"
+            resultType="java.lang.Long">
+
+        SELECT COUNT(DISTINCT t.id)
+
+        FROM task t
+
+                 INNER JOIN task_assignee ta
+                            ON ta.task_id = t.id
+
+                 INNER JOIN project p
+                            ON p.id = t.project_id
+
+        WHERE
+            t.deleted = 0
+
+          AND ta.user_id = #{userId}
+
+          AND t.status != 'CANCELLED'
+
+          AND
+            (
+                p.owner_id = #{userId}
+
+                    OR EXISTS (
+                    SELECT 1
+                    FROM team_member tm
+                    WHERE
+                        tm.team_id = p.team_id
+                      AND tm.user_id = #{userId}
+                )
+
+                    OR EXISTS (
+                    SELECT 1
+                    FROM project_member pm
+                    WHERE
+                        pm.project_id = p.id
+                      AND pm.user_id = #{userId}
+                )
+                )
+
+    </select>
+
+
+    <!-- ================================================= -->
+    <!-- 当前用户负责的逾期任务 -->
+    <!-- ================================================= -->
+
+    <select
+            id="countOverdueTasks"
+            resultType="java.lang.Long">
+
+        SELECT COUNT(DISTINCT t.id)
+
+        FROM task t
+
+                 INNER JOIN task_assignee ta
+                            ON ta.task_id = t.id
+
+                 INNER JOIN project p
+                            ON p.id = t.project_id
+
+        WHERE
+            t.deleted = 0
+
+          AND ta.user_id = #{userId}
+
+          AND t.deadline IS NOT NULL
+
+          AND t.deadline <![CDATA[ < ]]> CURDATE()
+
+          AND t.status NOT IN (
+                               'DONE',
+                               'CANCELLED'
+            )
+
+          AND
+            (
+                p.owner_id = #{userId}
+
+                    OR EXISTS (
+                    SELECT 1
+                    FROM team_member tm
+                    WHERE
+                        tm.team_id = p.team_id
+                      AND tm.user_id = #{userId}
+                )
+
+                    OR EXISTS (
+                    SELECT 1
+                    FROM project_member pm
+                    WHERE
+                        pm.project_id = p.id
+                      AND pm.user_id = #{userId}
+                )
+                )
+
+    </select>
+
+
+    <!-- ================================================= -->
+    <!-- 待当前用户验收 -->
+    <!--
+        有验收权限：
+
+        1. 项目负责人
+        2. 团队 OWNER
+        3. 团队 ADMIN
+
+        项目 MANAGER 不自动拥有验收权限
+    -->
+    <!-- ================================================= -->
+
+    <select
+            id="countReviewTasks"
+            resultType="java.lang.Long">
+
+        SELECT COUNT(DISTINCT t.id)
+
+        FROM task t
+
+                 INNER JOIN project p
+                            ON p.id = t.project_id
+
+        WHERE
+            t.deleted = 0
+
+          AND t.status = 'IN_REVIEW'
+
+          AND
+            (
+                p.owner_id = #{userId}
+
+                    OR EXISTS (
+                    SELECT 1
+                    FROM team_member tm
+                    WHERE
+                        tm.team_id = p.team_id
+
+                      AND tm.user_id = #{userId}
+
+                      AND tm.role_type IN (
+                                           'OWNER',
+                                           'ADMIN'
+                        )
+                )
+                )
+
+    </select>
+
+
+    <!-- ================================================= -->
+    <!-- 最近任务 -->
+    <!--
+        当前用户负责的最近 5 个任务。
+
+        注意：
+        这里不使用 DISTINCT。
+
+        task_assignee 应保证：
+        task_id + user_id 唯一。
+
+        删除 DISTINCT 后，
+        ORDER BY t.created_time 可以正常使用，
+        同时避免 MySQL 3065。
+    -->
+    <!-- ================================================= -->
+
+    <select
+            id="selectRecentTasks"
+            resultType="com.winforrd.taskflow.vo.DashboardTaskVO">
+
+        SELECT
+
+            t.id AS id,
+
+            t.project_id AS projectId,
+
+            p.name AS projectName,
+
+            t.title AS title,
+
+            t.status AS status,
+
+            t.priority AS priority,
+
+            t.deadline AS deadline,
+
+            CASE
+                WHEN
+                    t.deadline IS NOT NULL
+
+                        AND t.deadline <![CDATA[ < ]]> CURDATE()
+
+                        AND t.status NOT IN (
+                                             'DONE',
+                                             'CANCELLED'
+                        )
+
+                    THEN 1
+
+                ELSE 0
+                END AS overdue
+
+        FROM task t
+
+                 INNER JOIN task_assignee ta
+                            ON ta.task_id = t.id
+
+                 INNER JOIN project p
+                            ON p.id = t.project_id
+
+        WHERE
+            t.deleted = 0
+
+          AND ta.user_id = #{userId}
+
+          AND
+            (
+                p.owner_id = #{userId}
+
+                    OR EXISTS (
+                    SELECT 1
+                    FROM team_member tm
+                    WHERE
+                        tm.team_id = p.team_id
+                      AND tm.user_id = #{userId}
+                )
+
+                    OR EXISTS (
+                    SELECT 1
+                    FROM project_member pm
+                    WHERE
+                        pm.project_id = p.id
+                      AND pm.user_id = #{userId}
+                )
+                )
+
+        ORDER BY
+            t.created_time DESC,
+            t.id DESC
+
+        LIMIT 5
+
+    </select>
+
+
+    <!-- ================================================= -->
+    <!-- 最近任务动态 -->
+    <!--
+        当前用户负责的任务产生的最近动态。
+
+        使用 EXISTS 判断负责人关系，
+        而不是直接 JOIN task_assignee。
+
+        好处：
+        不会因为负责人关系表产生重复动态记录。
+    -->
+    <!-- ================================================= -->
+
+    <select
+            id="selectRecentActivities"
+            resultType="com.winforrd.taskflow.vo.DashboardActivityVO">
+
+        SELECT
+
+            a.id AS id,
+
+            a.task_id AS taskId,
+
+            t.title AS taskTitle,
+
+            COALESCE(
+                    NULLIF(u.nickname, ''),
+                    u.username
+            ) AS operatorName,
+
+            a.activity_type AS activityType,
+
+            a.content AS content,
+
+            a.created_time AS createdTime
+
+        FROM task_activity a
+
+                 INNER JOIN task t
+                            ON t.id = a.task_id
+
+                 INNER JOIN project p
+                            ON p.id = t.project_id
+
+                 LEFT JOIN sys_user u
+                           ON u.id = a.operator_id
+
+        WHERE
+            t.deleted = 0
+
+          AND EXISTS (
+            SELECT 1
+            FROM task_assignee ta
+            WHERE
+                ta.task_id = t.id
+              AND ta.user_id = #{userId}
+        )
+
+          AND
+            (
+                p.owner_id = #{userId}
+
+                    OR EXISTS (
+                    SELECT 1
+                    FROM team_member tm
+                    WHERE
+                        tm.team_id = p.team_id
+                      AND tm.user_id = #{userId}
+                )
+
+                    OR EXISTS (
+                    SELECT 1
+                    FROM project_member pm
+                    WHERE
+                        pm.project_id = p.id
+                      AND pm.user_id = #{userId}
+                )
+                )
+
+        ORDER BY
+            a.created_time DESC,
+            a.id DESC
+
+        LIMIT 10
+
+    </select>
+
+
+</mapper>

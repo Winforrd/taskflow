@@ -415,6 +415,7 @@ import {
 } from 'vue'
 
 import {
+  useRoute,
   useRouter
 } from 'vue-router'
 
@@ -430,8 +431,9 @@ import type {
 } from '@/types/myTask'
 
 
-const router =
-  useRouter()
+const router =useRouter()
+
+const route =useRoute()
 
 
 /**
@@ -439,7 +441,13 @@ const router =
  */
 const activeType =
   ref<MyTaskType>(
+
+    (
+      route.query.type as MyTaskType
+    )
+    ||
     'ASSIGNED'
+
   )
 
 

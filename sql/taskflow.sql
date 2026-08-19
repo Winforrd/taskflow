@@ -241,9 +241,7 @@ CREATE TABLE task_status_record (
 
                                     changed_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-                                    KEY idx_status_record_task_id (
-        task_id
-    )
+                                    KEY idx_status_record_task_id (task_id)
 
 ) COMMENT='任务状态流转记录表';
 
