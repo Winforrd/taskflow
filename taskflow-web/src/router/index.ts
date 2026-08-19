@@ -282,6 +282,25 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
+      /**
+       * 我的任务
+       */
+      {
+        path: 'my-tasks',
+
+        name: 'MyTasks',
+
+        component: () =>
+          import(
+            '@/views/task/MyTaskView.vue'
+          ),
+
+        meta: {
+          requiresAuth: true,
+          title: '我的任务'
+        }
+      },
+
     ]
   },
 

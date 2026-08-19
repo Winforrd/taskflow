@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.winforrd.taskflow.mapper.MyTaskMapper">
+
+
+    <!--
+        =====================================================
+        公共查询字段
+        =====================================================
+    -->
+    <sql id="TaskColumns">
+        SELECT t.id AS id, t.project_id AS projectId, p.name AS projectName, t.title AS title, t.status AS status, t.priority AS priority, t.creator_id AS creatorId,
+        COALESCE( NULLIF(creator.nickname, ''), creator.username ) AS creatorName,
+        ( SELECT GROUP_CONCAT( COALESCE( NULLIF(u.nickname, ''), u.username ) ORDER BY ta.id SEPARATOR '、' )
+        FROM task_assignee ta
+        LEFT JOIN sys_user u ON u.id = ta.user_id
+        WHERE ta.task_id = t.id ) AS assigneeNames, t.start_date AS startDate, t.deadline AS deadline,
+        CASE
+        WHEN
+        t.deadline IS NOT NULL AND t.deadline <![CDATA[ < ]]> CURDATE() AND t.status NOT IN ( 'DONE', 'CANCELLED' )
+        THEN 1
+        ELSE 0
+        END AS overdue,
+        t.created_time AS createdTime
+        FROM task t
+        INNER JOIN project p
+        ON p.id = t.project_id
+        LEFT JOIN sys_user creator
+        ON creator.id = t.creator_id
+    </sql>
+
+
+    <!--
+        =====================================================
+        当前用户必须仍然能够访问项目
+        允许：
+        1. 项目负责人
+        2. 当前团队成员
+        3. 当前项目成员
+
+        防止用户已经退出项目/团队之后
+        继续通过旧 task_assignee 查看数据。
+        =====================================================
+    -->
+    <sql id="ProjectAccessCondition">
+
+        AND
+        (
+        p.owner_id = #{userId}
+
+        OR EXISTS (
+
+        SELECT 1
+
+        FROM team_member tm
+
+        WHERE
+        tm.team_id = p.team_id
+        AND tm.user_id = #{userId}
+
+        )
+
+        OR EXISTS (
+
+        SELECT 1
+
+        FROM project_member pm
+
+        WHERE
+        pm.project_id = p.id
+        AND pm.user_id = #{userId}
+        )
+        )
+
+    </sql>
+
+
+    <!--
+        =====================================================
+        我负责的
+        =====================================================
+    -->
+    <select id="selectAssignedTasks" resultType="com.winforrd.taskflow.vo.MyTaskVO">
+
+        <include refid="TaskColumns"/>
+
+        WHERE
+        t.deleted = 0
+
+        AND EXISTS (
+
+        SELECT 1
+
+        FROM task_assignee ta2
+
+        WHERE
+        ta2.task_id = t.id
+        AND ta2.user_id = #{userId}
+
+        )
+
+
+        <include refid="ProjectAccessCondition"/>
+
+
+        <if test="keyword != null and keyword != ''">
+            AND t.title LIKE
+            CONCAT( '%', #{keyword}, '%' )
+        </if>
+        <if test="status != null and status != ''">
+            AND t.status = #{status}
+        </if>
+        ORDER BY
+        CASE t.priority
+        WHEN 'URGENT' THEN 1
+        WHEN 'HIGH' THEN 2
+        WHEN 'MEDIUM' THEN 3
+        WHEN 'LOW' THEN 4
+        ELSE 5
+        END,
+        CASE
+        WHEN
+        t.deadline IS NULL
+        THEN 1
+        ELSE 0
+        END,
+        t.deadline ASC,
+        t.created_time DESC
+    </select>
+
+
+    <!--
+        =====================================================
+        我创建的
+        =====================================================
+    -->
+    <select id="selectCreatedTasks" resultType="com.winforrd.taskflow.vo.MyTaskVO">
+        <include refid="TaskColumns"/>
+        WHERE
+        t.deleted = 0
+        AND t.creator_id = #{userId}
+        <include refid="ProjectAccessCondition"/>
+        <if test="keyword != null and keyword != ''">
+            AND t.title LIKE CONCAT( '%', #{keyword}, '%' )
+        </if>
+        <if test="status != null and status != ''">
+            AND t.status = #{status}
+        </if>
+        ORDER BY
+        t.created_time DESC
+    </select>
+
+    <!--
+        =====================================================
+        待我验收
+
+        当前规则：
+
+        IN_REVIEW
+
+        +
+
+        当前用户必须是：
+
+        团队 OWNER / ADMIN
+        或
+        项目负责人
+
+        MANAGER 不拥有最终验收权限。
+        =====================================================
+    -->
+    <select id="selectReviewTasks" resultType="com.winforrd.taskflow.vo.MyTaskVO">
+        <include refid="TaskColumns"/>
+        WHERE
+        t.deleted = 0
+        AND t.status = 'IN_REVIEW'
+        AND
+        (
+        p.owner_id = #{userId}
+        OR EXISTS (
+        SELECT 1
+        FROM team_member tm
+        WHERE
+        tm.team_id = p.team_id
+        AND tm.user_id = #{userId}
+        AND tm.role_type IN (
+        'OWNER',
+        'ADMIN'
+        )
+        )
+        )
+        <if test="keyword != null and keyword != ''">
+            AND t.title LIKE CONCAT( '%', #{keyword}, '%' )
+        </if>
+        ORDER BY
+        CASE t.priority
+        WHEN 'URGENT' THEN 1
+        WHEN 'HIGH' THEN 2
+        WHEN 'MEDIUM' THEN 3
+        WHEN 'LOW' THEN 4
+        ELSE 5
+        END,
+        t.created_time ASC
+
+    </select>
+    <!--
+        =====================================================
+        已逾期
+
+        定义：
+
+        1. 当前用户是负责人
+        2. deadline < 今天
+        3. 非 DONE
+        4. 非 CANCELLED
+        =====================================================
+    -->
+    <select id="selectOverdueTasks" resultType="com.winforrd.taskflow.vo.MyTaskVO">
+
+        <include refid="TaskColumns"/>
+        WHERE
+        t.deleted = 0
+        AND EXISTS (
+        SELECT 1
+        FROM task_assignee ta2
+        WHERE
+        ta2.task_id = t.id
+        AND ta2.user_id = #{userId}
+        )
+        AND t.deadline IS NOT NULL
+        AND t.deadline <![CDATA[ < ]]> CURDATE()
+        AND t.status NOT IN (  'DONE', 'CANCELLED'  )
+        <include refid="ProjectAccessCondition"/>
+        <if test="keyword != null and keyword != ''">
+            AND t.title LIKE CONCAT( '%', #{keyword}, '%' )
+        </if>
+        ORDER BY
+        t.deadline ASC,
+        t.priority DESC,
+        t.created_time ASC
+    </select>
+
+
+</mapper>

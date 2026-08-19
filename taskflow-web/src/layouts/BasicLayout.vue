@@ -36,6 +36,12 @@
 
         </el-menu-item>
 
+        <el-menu-item
+          index="/my-tasks"
+        >
+          我的任务
+        </el-menu-item>
+
 
         <!-- 我的团队 -->
         <el-menu-item
