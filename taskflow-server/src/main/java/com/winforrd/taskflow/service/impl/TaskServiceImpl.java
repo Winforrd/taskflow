@@ -3,6 +3,7 @@ package com.winforrd.taskflow.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.winforrd.taskflow.common.enums.ErrorCode;
+import com.winforrd.taskflow.common.enums.NotificationType;
 import com.winforrd.taskflow.common.enums.ProjectRole;
 import com.winforrd.taskflow.common.enums.ProjectStatus;
 import com.winforrd.taskflow.common.enums.TaskActivityType;
@@ -27,6 +28,7 @@ import com.winforrd.taskflow.mapper.TaskActivityMapper;
 import com.winforrd.taskflow.mapper.TaskAssigneeMapper;
 import com.winforrd.taskflow.mapper.TaskMapper;
 import com.winforrd.taskflow.mapper.TaskStatusRecordMapper;
+import com.winforrd.taskflow.service.NotificationService;
 import com.winforrd.taskflow.service.ProjectMemberService;
 import com.winforrd.taskflow.service.TaskService;
 import com.winforrd.taskflow.service.TeamMemberService;
@@ -66,6 +68,11 @@ public class TaskServiceImpl
     private final TeamMemberService teamMemberService;
 
     private final ProjectMemberService projectMemberService;
+
+    /**
+     * 通知服务
+     */
+    private final NotificationService notificationService;
 
 
     /**
@@ -131,6 +138,9 @@ public class TaskServiceImpl
         );
 
 
+        /**
+         * 所有新任务都从 TODO 开始。
+         */
         task.setStatus(
                 TaskStatus.TODO.name()
         );
@@ -145,7 +155,6 @@ public class TaskServiceImpl
                         ? request.getPriority()
 
                         : TaskPriority.MEDIUM.name()
-
         );
 
 
@@ -164,7 +173,9 @@ public class TaskServiceImpl
         );
 
 
-        task.setVersion(0);
+        task.setVersion(
+                0
+        );
 
 
         taskMapper.insert(
@@ -172,9 +183,6 @@ public class TaskServiceImpl
         );
 
 
-        /**
-         * 初始状态
-         */
         saveStatusRecord(
                 task.getId(),
                 null,
@@ -195,7 +203,7 @@ public class TaskServiceImpl
          * =================================================
          * 普通 MEMBER 创建任务
          *
-         * 自动由自己负责
+         * 自动把自己设置成负责人。
          * =================================================
          */
         if (
@@ -206,8 +214,8 @@ public class TaskServiceImpl
         ) {
 
             /**
-             * 即使绕过前端传其他人的 ID，
-             * 后端也拒绝。
+             * 防止绕过前端，
+             * 手工给其他成员分配任务。
              */
             if (
                     request.getAssigneeIds() != null
@@ -228,6 +236,12 @@ public class TaskServiceImpl
             }
 
 
+            /**
+             * MEMBER 自动自己负责。
+             *
+             * 自己给自己分配，
+             * 不发送通知。
+             */
             addAssigneeInternal(
                     task,
                     currentUserId,
@@ -247,8 +261,8 @@ public class TaskServiceImpl
          *
          * 可以：
          *
-         * 1. 创建无人 TODO
-         * 2. 创建时直接指定负责人
+         * 1. 创建无人待调度任务
+         * 2. 创建时指定负责人
          * =================================================
          */
         if (
@@ -568,7 +582,7 @@ public class TaskServiceImpl
 
 
         /**
-         * 状态机合法性
+         * 状态机合法性。
          */
         if (
                 !canTransition(
@@ -584,7 +598,7 @@ public class TaskServiceImpl
 
 
         /**
-         * 用户权限
+         * 权限校验。
          */
         checkCanTransition(
                 project,
@@ -596,18 +610,9 @@ public class TaskServiceImpl
 
 
         /**
-         * =================================================
-         * 防御性检查：
+         * 防御：
          *
-         * TODO → IN_PROGRESS
-         *
-         * 必须确保当前至少有一个负责人。
-         *
-         * 正常情况下，因为执行者自己必须是负责人，
-         * 这里一定成立。
-         *
-         * 但增加这个判断可以防数据库脏数据。
-         * =================================================
+         * 进入进行中时必须至少有一个负责人。
          */
         if (
                 TaskStatus.IN_PROGRESS.name()
@@ -645,9 +650,6 @@ public class TaskServiceImpl
         );
 
 
-        /**
-         * 完成时间
-         */
         if (
                 TaskStatus.DONE.name()
                         .equals(
@@ -694,12 +696,26 @@ public class TaskServiceImpl
                         targetStatus
                 )
         );
+
+
+        /**
+         * =================================================
+         * 状态变化通知
+         * =================================================
+         */
+        sendStatusNotification(
+                project,
+                task,
+                currentUserId,
+                oldStatus,
+                targetStatus
+        );
     }
 
 
     /**
      * =====================================================
-     * 添加任务负责人
+     * 添加负责人
      * =====================================================
      */
     @Override
@@ -730,24 +746,11 @@ public class TaskServiceImpl
         );
 
 
-        /**
-         * DONE / CANCELLED
-         * 不允许再调整负责人。
-         */
         checkTaskCanManageAssignees(
                 task
         );
 
 
-        /**
-         * 只有：
-         *
-         * 团队 OWNER / ADMIN
-         * 项目负责人
-         * MANAGER
-         *
-         * 可以调度负责人。
-         */
         if (
                 !hasTaskManagePermission(
                         project,
@@ -761,12 +764,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * 被添加者必须：
-         *
-         * 1. 是项目成员
-         * 2. 不是 READ_ONLY
-         */
         checkAssigneeEligible(
                 project,
                 userId
@@ -783,7 +780,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 移除任务负责人
+     * 移除负责人
      * =====================================================
      */
     @Override
@@ -814,18 +811,11 @@ public class TaskServiceImpl
         );
 
 
-        /**
-         * DONE / CANCELLED
-         * 不允许调整负责人。
-         */
         checkTaskCanManageAssignees(
                 task
         );
 
 
-        /**
-         * 管理权限。
-         */
         if (
                 !hasTaskManagePermission(
                         project,
@@ -868,20 +858,8 @@ public class TaskServiceImpl
 
 
         /**
-         * =================================================
-         * 最后一个负责人保护
-         *
-         * TODO：
-         * 可以把最后一个负责人移除，
-         * 重新变为无人待调度。
-         *
-         * IN_PROGRESS：
-         * 不允许没有负责人。
-         *
-         * IN_REVIEW：
-         * 不允许没有负责人，
-         * 必须保留至少一个实际执行人。
-         * =================================================
+         * IN_PROGRESS / IN_REVIEW
+         * 至少保留一名负责人。
          */
         if (
                 TaskStatus.IN_PROGRESS.name()
@@ -895,14 +873,14 @@ public class TaskServiceImpl
                                 )
         ) {
 
-            Long assigneeCount =
+            Long count =
                     getTaskAssigneeCount(
                             taskId
                     );
 
 
             if (
-                    assigneeCount <= 1
+                    count <= 1
             ) {
 
                 throw new BusinessException(
@@ -933,12 +911,44 @@ public class TaskServiceImpl
                                 user
                         )
         );
+
+
+        /**
+         * =================================================
+         * 被移除负责人通知
+         *
+         * 自己移除自己时不通知自己。
+         * =================================================
+         */
+        if (
+                !currentUserId.equals(
+                        userId
+                )
+        ) {
+
+            notificationService.createNotification(
+
+                    userId,
+
+                    NotificationType.TASK_UNASSIGNED,
+
+                    "任务负责人发生变化",
+
+                    "你已被移出任务："
+                            +
+                            task.getTitle(),
+
+                    "TASK",
+
+                    taskId
+            );
+        }
     }
 
 
     /**
      * =====================================================
-     * 查询任务动态
+     * 任务动态
      * =====================================================
      */
     @Override
@@ -1042,8 +1052,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 创建任务时：
-     * 是否可以指定某个用户
+     * 创建任务时是否允许指定某用户
      * =====================================================
      */
     private void checkCanAssignUser(
@@ -1058,9 +1067,6 @@ public class TaskServiceImpl
         );
 
 
-        /**
-         * 高权限调度角色。
-         */
         if (
                 hasTaskManagePermission(
                         project,
@@ -1073,8 +1079,7 @@ public class TaskServiceImpl
 
 
         /**
-         * 普通 MEMBER
-         * 只能指定自己。
+         * MEMBER 只能指派自己。
          */
         if (
                 operatorId.equals(
@@ -1094,7 +1099,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 是否可以成为任务负责人
+     * 判断用户能否成为负责人
      * =====================================================
      */
     private void checkAssigneeEligible(
@@ -1120,8 +1125,7 @@ public class TaskServiceImpl
 
 
         /**
-         * READ_ONLY
-         * 永远不能成为负责人。
+         * READ_ONLY 不能成为负责人。
          */
         if (
                 ProjectRole.READ_ONLY.name()
@@ -1154,9 +1158,6 @@ public class TaskServiceImpl
                 );
 
 
-        /**
-         * 内部调用也重新校验资格。
-         */
         checkAssigneeEligible(
                 project,
                 userId
@@ -1221,9 +1222,7 @@ public class TaskServiceImpl
                     assignee
             );
 
-        }
-
-        catch (
+        } catch (
                 DuplicateKeyException e
         ) {
 
@@ -1249,13 +1248,319 @@ public class TaskServiceImpl
                                 user
                         )
         );
+
+
+        /**
+         * =================================================
+         * 任务分配通知
+         *
+         * 自己给自己分配不通知。
+         * =================================================
+         */
+        if (
+                !operatorId.equals(
+                        userId
+                )
+        ) {
+
+            notificationService.createNotification(
+
+                    userId,
+
+                    NotificationType.TASK_ASSIGNED,
+
+                    "你有新的任务",
+
+                    "你被分配了任务："
+                            +
+                            task.getTitle(),
+
+                    "TASK",
+
+                    task.getId()
+            );
+        }
     }
 
 
     /**
      * =====================================================
-     * DONE / CANCELLED
-     * 禁止再管理负责人
+     * 状态变化通知
+     * =====================================================
+     */
+    private void sendStatusNotification(
+            Project project,
+            Task task,
+            Long operatorId,
+            String oldStatus,
+            String targetStatus
+    ) {
+
+        /**
+         * =================================================
+         * 提交验收
+         * =================================================
+         */
+        if (
+                TaskStatus.IN_PROGRESS.name()
+                        .equals(
+                                oldStatus
+                        )
+                        &&
+                        TaskStatus.IN_REVIEW.name()
+                                .equals(
+                                        targetStatus
+                                )
+        ) {
+
+            Set<Long> receiverIds =
+                    new LinkedHashSet<>();
+
+
+            /**
+             * 项目负责人。
+             */
+            receiverIds.add(
+                    project.getOwnerId()
+            );
+
+
+            /**
+             * 团队 OWNER / ADMIN。
+             */
+            List<TeamMember> teamAdmins =
+                    teamMemberService.getTeamAdmins(
+                            project.getTeamId()
+                    );
+
+
+            if (
+                    teamAdmins != null
+            ) {
+
+                for (
+                        TeamMember member :
+                        teamAdmins
+                ) {
+
+                    receiverIds.add(
+                            member.getUserId()
+                    );
+                }
+            }
+
+
+            /**
+             * 不通知操作人自己。
+             */
+            receiverIds.remove(
+                    operatorId
+            );
+
+
+            notificationService.createNotifications(
+
+                    receiverIds,
+
+                    NotificationType.TASK_SUBMITTED,
+
+                    "有任务等待验收",
+
+                    "任务“"
+                            +
+                            task.getTitle()
+                            +
+                            "”已提交验收",
+
+                    "TASK",
+
+                    task.getId()
+            );
+
+
+            return;
+        }
+
+
+        /**
+         * =================================================
+         * 验收通过
+         * =================================================
+         */
+        if (
+                TaskStatus.IN_REVIEW.name()
+                        .equals(
+                                oldStatus
+                        )
+                        &&
+                        TaskStatus.DONE.name()
+                                .equals(
+                                        targetStatus
+                                )
+        ) {
+
+            sendNotificationToAssignees(
+
+                    task.getId(),
+
+                    operatorId,
+
+                    NotificationType.TASK_APPROVED,
+
+                    "任务验收通过",
+
+                    "任务“"
+                            +
+                            task.getTitle()
+                            +
+                            "”已验收完成"
+            );
+
+
+            return;
+        }
+
+
+        /**
+         * =================================================
+         * 验收驳回
+         * =================================================
+         */
+        if (
+                TaskStatus.IN_REVIEW.name()
+                        .equals(
+                                oldStatus
+                        )
+                        &&
+                        TaskStatus.IN_PROGRESS.name()
+                                .equals(
+                                        targetStatus
+                                )
+        ) {
+
+            sendNotificationToAssignees(
+
+                    task.getId(),
+
+                    operatorId,
+
+                    NotificationType.TASK_REJECTED,
+
+                    "任务验收被驳回",
+
+                    "任务“"
+                            +
+                            task.getTitle()
+                            +
+                            "”验收未通过，请继续处理"
+            );
+
+
+            return;
+        }
+
+
+        /**
+         * =================================================
+         * 任务取消
+         * =================================================
+         */
+        if (
+                TaskStatus.CANCELLED.name()
+                        .equals(
+                                targetStatus
+                        )
+        ) {
+
+            sendNotificationToAssignees(
+
+                    task.getId(),
+
+                    operatorId,
+
+                    NotificationType.TASK_CANCELLED,
+
+                    "任务已取消",
+
+                    "任务“"
+                            +
+                            task.getTitle()
+                            +
+                            "”已被取消"
+            );
+        }
+    }
+
+
+    /**
+     * =====================================================
+     * 通知任务所有负责人
+     * =====================================================
+     */
+    private void sendNotificationToAssignees(
+            Long taskId,
+            Long operatorId,
+            NotificationType type,
+            String title,
+            String content
+    ) {
+
+        List<TaskAssignee> assignees =
+                taskAssigneeMapper.selectList(
+
+                        new LambdaQueryWrapper<TaskAssignee>()
+
+                                .eq(
+                                        TaskAssignee::getTaskId,
+                                        taskId
+                                )
+
+                );
+
+
+        Set<Long> receiverIds =
+                new LinkedHashSet<>();
+
+
+        for (
+                TaskAssignee assignee :
+                assignees
+        ) {
+
+            receiverIds.add(
+                    assignee.getUserId()
+            );
+        }
+
+
+        /**
+         * 不通知操作者自己。
+         */
+        receiverIds.remove(
+                operatorId
+        );
+
+
+        notificationService.createNotifications(
+
+                receiverIds,
+
+                type,
+
+                title,
+
+                content,
+
+                "TASK",
+
+                taskId
+        );
+    }
+
+
+    /**
+     * =====================================================
+     * DONE / CANCELLED 禁止修改负责人
      * =====================================================
      */
     private void checkTaskCanManageAssignees(
@@ -1298,7 +1603,6 @@ public class TaskServiceImpl
                                 TaskAssignee::getTaskId,
                                 taskId
                         )
-
         );
     }
 
@@ -1330,9 +1634,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * 团队 OWNER / ADMIN
-         */
         if (
                 isTeamAdmin(
                         teamMember
@@ -1360,9 +1661,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * READ_ONLY不能创建任务。
-         */
         if (
                 ProjectRole.READ_ONLY.name()
                         .equals(
@@ -1406,9 +1704,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * 项目负责人优先。
-         */
         if (
                 project.getOwnerId()
                         .equals(
@@ -1447,9 +1742,6 @@ public class TaskServiceImpl
             Long userId
     ) {
 
-        /**
-         * 高级调度权限。
-         */
         if (
                 hasTaskManagePermission(
                         project,
@@ -1483,9 +1775,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * MEMBER只能编辑自己创建的任务。
-         */
         if (
                 task.getCreatorId()
                         .equals(
@@ -1505,7 +1794,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 状态迁移权限
+     * 状态流转权限
      * =====================================================
      */
     private void checkCanTransition(
@@ -1516,9 +1805,6 @@ public class TaskServiceImpl
             String targetStatus
     ) {
 
-        /**
-         * READ_ONLY完全不能操作。
-         */
         if (
                 isEffectiveReadOnly(
                         project,
@@ -1535,7 +1821,7 @@ public class TaskServiceImpl
         /**
          * TODO → IN_PROGRESS
          *
-         * 只有负责人能开始执行。
+         * 只有负责人能够开始。
          */
         if (
                 TaskStatus.TODO.name()
@@ -1569,7 +1855,7 @@ public class TaskServiceImpl
         /**
          * IN_PROGRESS → IN_REVIEW
          *
-         * 只有负责人可以提交验收。
+         * 只有负责人提交验收。
          */
         if (
                 TaskStatus.IN_PROGRESS.name()
@@ -1604,7 +1890,7 @@ public class TaskServiceImpl
          * IN_REVIEW → DONE
          *
          * 团队 OWNER / ADMIN
-         * 项目负责人
+         * 项目负责人。
          */
         if (
                 TaskStatus.IN_REVIEW.name()
@@ -1638,7 +1924,7 @@ public class TaskServiceImpl
         /**
          * IN_REVIEW → IN_PROGRESS
          *
-         * 验收驳回。
+         * 驳回。
          */
         if (
                 TaskStatus.IN_REVIEW.name()
@@ -1670,12 +1956,7 @@ public class TaskServiceImpl
 
 
         /**
-         * TODO / IN_PROGRESS → CANCELLED
-         *
-         * 团队 OWNER / ADMIN
-         * 项目负责人
-         *
-         * 或任务创建人。
+         * 取消任务。
          */
         if (
                 TaskStatus.CANCELLED.name()
@@ -1714,10 +1995,9 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 任务调度权限
+     * 调度管理权限
      *
-     * 团队 OWNER
-     * 团队 ADMIN
+     * 团队 OWNER / ADMIN
      * 项目负责人
      * 项目 MANAGER
      * =====================================================
@@ -1777,7 +2057,8 @@ public class TaskServiceImpl
      * =====================================================
      * 任意任务取消权限
      *
-     * MANAGER 不包括
+     * 团队 OWNER / ADMIN
+     * 项目负责人
      * =====================================================
      */
     private boolean hasCancelAnyTaskPermission(
@@ -1849,7 +2130,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 是否团队 OWNER / ADMIN
+     * 团队管理员判断
      * =====================================================
      */
     private boolean isTeamAdmin(
@@ -1893,9 +2174,6 @@ public class TaskServiceImpl
                 );
 
 
-        /**
-         * 团队 OWNER / ADMIN 优先。
-         */
         if (
                 teamMember != null
                         &&
@@ -1908,9 +2186,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * 项目负责人优先。
-         */
         if (
                 project.getOwnerId()
                         .equals(
@@ -1962,7 +2237,6 @@ public class TaskServiceImpl
                                         TaskAssignee::getUserId,
                                         userId
                                 )
-
                 );
 
 
@@ -2024,10 +2298,6 @@ public class TaskServiceImpl
                     );
 
 
-            /**
-             * DONE / CANCELLED
-             * 都是终态。
-             */
             default -> false;
         };
     }
@@ -2035,7 +2305,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 计算当前用户能够执行的状态
+     * 当前用户允许的下一状态
      * =====================================================
      */
     private List<String> calculateAllowedNextStatuses(
@@ -2052,9 +2322,6 @@ public class TaskServiceImpl
                 task.getStatus();
 
 
-        /**
-         * DONE / CANCELLED
-         */
         if (
                 TaskStatus.DONE.name()
                         .equals(
@@ -2071,9 +2338,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * READ_ONLY
-         */
         if (
                 isEffectiveReadOnly(
                         project,
@@ -2085,9 +2349,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * TODO
-         */
         if (
                 TaskStatus.TODO.name()
                         .equals(
@@ -2095,9 +2356,6 @@ public class TaskServiceImpl
                         )
         ) {
 
-            /**
-             * 只有负责人能开始。
-             */
             if (
                     isTaskAssignee(
                             task.getId(),
@@ -2111,9 +2369,6 @@ public class TaskServiceImpl
             }
 
 
-            /**
-             * 有取消权限。
-             */
             if (
                     hasCancelAnyTaskPermission(
                             project,
@@ -2136,9 +2391,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * IN_PROGRESS
-         */
         if (
                 TaskStatus.IN_PROGRESS.name()
                         .equals(
@@ -2146,9 +2398,6 @@ public class TaskServiceImpl
                         )
         ) {
 
-            /**
-             * 负责人提交验收。
-             */
             if (
                     isTaskAssignee(
                             task.getId(),
@@ -2184,9 +2433,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * IN_REVIEW
-         */
         if (
                 TaskStatus.IN_REVIEW.name()
                         .equals(
@@ -2239,10 +2485,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * 已完成 / 已取消，
-         * 建议任务内容也进入只读。
-         */
         if (
                 TaskStatus.DONE.name()
                         .equals(
@@ -2290,7 +2532,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 是否允许管理负责人
+     * 是否管理负责人
      * =====================================================
      */
     private boolean calculateCanManageAssignees(
@@ -2299,9 +2541,6 @@ public class TaskServiceImpl
             Long userId
     ) {
 
-        /**
-         * 项目归档
-         */
         if (
                 ProjectStatus.ARCHIVED.name()
                         .equals(
@@ -2313,10 +2552,6 @@ public class TaskServiceImpl
         }
 
 
-        /**
-         * DONE / CANCELLED
-         * 任务已经结束，不允许修改人员关系。
-         */
         if (
                 TaskStatus.DONE.name()
                         .equals(
@@ -2342,7 +2577,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 是否可以给其他成员指派任务
+     * 是否可给其他人分配任务
      * =====================================================
      */
     private boolean calculateCanAssignOthers(
@@ -2387,7 +2622,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 保存状态日志
+     * 状态记录
      * =====================================================
      */
     private void saveStatusRecord(
@@ -2434,7 +2669,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 保存任务动态
+     * 动态记录
      * =====================================================
      */
     private void saveActivity(
@@ -2481,7 +2716,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 状态动态内容
+     * 状态动态文字
      * =====================================================
      */
     private String buildStatusActivityContent(
@@ -2591,7 +2826,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 项目归档保护
+     * 项目归档检查
      * =====================================================
      */
     private void checkProjectNotArchived(
@@ -2614,7 +2849,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 优先级
+     * 优先级检查
      * =====================================================
      */
     private void validatePriority(
@@ -2656,7 +2891,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 日期
+     * 日期检查
      * =====================================================
      */
     private void validateDate(
@@ -2683,7 +2918,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * Task → TaskVO
+     * Task → VO
      * =====================================================
      */
     private TaskVO convertTaskVO(
@@ -2823,7 +3058,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 负责人VO
+     * 负责人 VO
      * =====================================================
      */
     private List<TaskAssigneeVO> getAssigneeVOs(
@@ -2839,7 +3074,6 @@ public class TaskServiceImpl
                                         TaskAssignee::getTaskId,
                                         taskId
                                 )
-
                 );
 
 
@@ -2902,7 +3136,7 @@ public class TaskServiceImpl
 
     /**
      * =====================================================
-     * 用户名称
+     * 用户显示名
      * =====================================================
      */
     private String getUserDisplayName(

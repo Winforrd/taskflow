@@ -31,4 +31,7 @@ public interface TeamMemberService {
 
     // 主动退出团队
     void quitTeam(Long teamId);
+
+    // 获取团队管理员
+    List<TeamMember> getTeamAdmins(Long teamId);
 }

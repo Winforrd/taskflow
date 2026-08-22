@@ -3,6 +3,7 @@ package com.winforrd.taskflow.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.winforrd.taskflow.common.enums.ErrorCode;
+import com.winforrd.taskflow.common.enums.NotificationType;
 import com.winforrd.taskflow.common.enums.ProjectRole;
 import com.winforrd.taskflow.common.enums.ProjectStatus;
 import com.winforrd.taskflow.common.enums.TeamRole;
@@ -12,12 +13,15 @@ import com.winforrd.taskflow.entity.Project;
 import com.winforrd.taskflow.entity.ProjectMember;
 import com.winforrd.taskflow.entity.SysUser;
 import com.winforrd.taskflow.entity.Task;
+import com.winforrd.taskflow.entity.TaskAssignee;
 import com.winforrd.taskflow.entity.TaskComment;
 import com.winforrd.taskflow.entity.TeamMember;
 import com.winforrd.taskflow.mapper.ProjectMapper;
 import com.winforrd.taskflow.mapper.SysUserMapper;
+import com.winforrd.taskflow.mapper.TaskAssigneeMapper;
 import com.winforrd.taskflow.mapper.TaskCommentMapper;
 import com.winforrd.taskflow.mapper.TaskMapper;
+import com.winforrd.taskflow.service.NotificationService;
 import com.winforrd.taskflow.service.ProjectMemberService;
 import com.winforrd.taskflow.service.TaskCommentService;
 import com.winforrd.taskflow.service.TeamMemberService;
@@ -28,7 +32,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -46,6 +52,16 @@ public class TaskCommentServiceImpl
     private final ProjectMemberService projectMemberService;
 
     private final TeamMemberService teamMemberService;
+
+    /**
+     * 通知服务
+     */
+    private final NotificationService notificationService;
+
+    /**
+     * 查询任务负责人
+     */
+    private final TaskAssigneeMapper taskAssigneeMapper;
 
 
     /**
@@ -69,7 +85,7 @@ public class TaskCommentServiceImpl
 
 
         /**
-         * 必须拥有项目查看权限。
+         * 必须有项目查看权限。
          */
         projectMemberService.checkCanView(
                 task.getProjectId(),
@@ -90,7 +106,6 @@ public class TaskCommentServiceImpl
                                 .orderByAsc(
                                         TaskComment::getCreatedTime
                                 )
-
                 );
 
 
@@ -145,7 +160,8 @@ public class TaskCommentServiceImpl
 
 
         /**
-         * 项目归档后禁止评论。
+         * 项目归档：
+         * 评论冻结。
          */
         if (
                 ProjectStatus.ARCHIVED.name()
@@ -161,7 +177,7 @@ public class TaskCommentServiceImpl
 
 
         /**
-         * 评论权限。
+         * 评论权限检查。
          */
         if (
                 !canComment(
@@ -178,8 +194,11 @@ public class TaskCommentServiceImpl
 
         String content =
                 request.getContent() == null
+
                         ? ""
-                        : request.getContent().trim();
+
+                        : request.getContent()
+                        .trim();
 
 
         if (
@@ -236,6 +255,19 @@ public class TaskCommentServiceImpl
         );
 
 
+        /**
+         * =================================================
+         * 评论通知
+         * =================================================
+         */
+        sendCommentNotification(
+                task,
+                project,
+                currentUserId,
+                content
+        );
+
+
         return comment.getId();
     }
 
@@ -243,30 +275,21 @@ public class TaskCommentServiceImpl
     /**
      * =====================================================
      * 删除评论
+     *
+     * 规则：
+     *
+     * 普通用户：
+     * 删除自己的评论
+     *
+     * OWNER / ADMIN：
+     * 删除任意评论
+     *
+     * 项目负责人：
+     * 删除任意评论
+     *
+     * 项目归档：
+     * 所有评论冻结
      * =====================================================
-     *
-     * 权限：
-     *
-     * 1. 所有人都可以删除自己的评论
-     *
-     * 2. 团队 OWNER / ADMIN
-     *    可以删除任意人的评论
-     *
-     * 3. 项目负责人
-     *    可以删除任意人的评论
-     *
-     * 4. MANAGER
-     *    只能删除自己
-     *
-     * 5. MEMBER
-     *    只能删除自己
-     *
-     * 6. READ_ONLY
-     *    本身不能发表评论，
-     *    因此正常情况下不会拥有评论
-     *
-     * 7. 项目归档以后
-     *    所有评论冻结
      */
     @Override
     @Transactional
@@ -324,10 +347,7 @@ public class TaskCommentServiceImpl
 
 
         /**
-         * ==============================
-         * 情况1：
-         * 删除自己的评论
-         * ==============================
+         * 自己的评论直接允许删除。
          */
         if (
                 comment.getUserId()
@@ -346,12 +366,7 @@ public class TaskCommentServiceImpl
 
 
         /**
-         * ==============================
-         * 情况2：
-         * 删除别人的评论
-         *
-         * 必须拥有评论管理权限
-         * ==============================
+         * 删除别人的评论必须拥有治理权限。
          */
         if (
                 !canManageAllComments(
@@ -396,8 +411,7 @@ public class TaskCommentServiceImpl
 
 
         /**
-         * 项目归档：
-         * 全部只读。
+         * 项目归档以后只读。
          */
         if (
                 ProjectStatus.ARCHIVED.name()
@@ -426,7 +440,7 @@ public class TaskCommentServiceImpl
 
 
         /**
-         * 团队 OWNER / ADMIN
+         * 团队 OWNER / ADMIN。
          */
         if (
                 isTeamAdmin(
@@ -439,7 +453,7 @@ public class TaskCommentServiceImpl
 
 
         /**
-         * 项目负责人
+         * 项目负责人。
          */
         if (
                 project.getOwnerId()
@@ -483,7 +497,7 @@ public class TaskCommentServiceImpl
 
 
         /**
-         * MANAGER / MEMBER
+         * MANAGER / MEMBER。
          */
         return true;
     }
@@ -491,14 +505,115 @@ public class TaskCommentServiceImpl
 
     /**
      * =====================================================
-     * 是否拥有“删除任意评论”的权限
-     * =====================================================
+     * 评论通知
      *
-     * 只有：
+     * 接收人：
+     *
+     * 1. 所有任务负责人
+     * 2. 项目负责人
+     *
+     * 排除：
+     * 评论者本人
+     * =====================================================
+     */
+    private void sendCommentNotification(
+            Task task,
+            Project project,
+            Long operatorId,
+            String content
+    ) {
+
+        Set<Long> receiverIds =
+                new LinkedHashSet<>();
+
+
+        /**
+         * 任务负责人。
+         */
+        List<TaskAssignee> assignees =
+                taskAssigneeMapper.selectList(
+
+                        new LambdaQueryWrapper<TaskAssignee>()
+
+                                .eq(
+                                        TaskAssignee::getTaskId,
+                                        task.getId()
+                                )
+                );
+
+
+        for (
+                TaskAssignee assignee :
+                assignees
+        ) {
+
+            receiverIds.add(
+                    assignee.getUserId()
+            );
+        }
+
+
+        /**
+         * 项目负责人。
+         */
+        receiverIds.add(
+                project.getOwnerId()
+        );
+
+
+        /**
+         * 评论人不通知自己。
+         */
+        receiverIds.remove(
+                operatorId
+        );
+
+
+        /**
+         * 通知内容最多显示前 50 个字符。
+         */
+        String preview =
+                content.length() > 50
+
+                        ? content.substring(
+                        0,
+                        50
+                ) + "..."
+
+                        : content;
+
+
+        notificationService.createNotifications(
+
+                receiverIds,
+
+                NotificationType.TASK_COMMENT,
+
+                "任务有新评论",
+
+                "任务“"
+                        +
+                        task.getTitle()
+                        +
+                        "”有新评论："
+                        +
+                        preview,
+
+                "TASK",
+
+                task.getId()
+        );
+    }
+
+
+    /**
+     * =====================================================
+     * 是否拥有删除任意评论权限
      *
      * 团队 OWNER
      * 团队 ADMIN
      * 项目负责人
+     * =====================================================
      */
     private boolean canManageAllComments(
             Project project,
@@ -512,9 +627,6 @@ public class TaskCommentServiceImpl
                 );
 
 
-        /**
-         * 团队 OWNER / ADMIN
-         */
         if (
                 teamMember != null
                         &&
@@ -527,9 +639,6 @@ public class TaskCommentServiceImpl
         }
 
 
-        /**
-         * 项目负责人
-         */
         return project.getOwnerId()
                 .equals(
                         userId
@@ -539,7 +648,7 @@ public class TaskCommentServiceImpl
 
     /**
      * =====================================================
-     * 是否团队 OWNER / ADMIN
+     * 团队管理员
      * =====================================================
      */
     private boolean isTeamAdmin(
@@ -568,7 +677,7 @@ public class TaskCommentServiceImpl
 
     /**
      * =====================================================
-     * TaskComment → VO
+     * Comment → VO
      * =====================================================
      */
     private TaskCommentVO convertCommentVO(
@@ -638,21 +747,6 @@ public class TaskCommentServiceImpl
         );
 
 
-        /**
-         * =================================================
-         * 前端删除按钮权限
-         * =================================================
-         *
-         * canDelete = true：
-         *
-         * 自己的评论
-         * 或
-         * 团队 OWNER / ADMIN
-         * 或
-         * 项目负责人
-         *
-         * 项目归档后永远 false。
-         */
         boolean projectArchived =
                 ProjectStatus.ARCHIVED.name()
                         .equals(
@@ -675,6 +769,7 @@ public class TaskCommentServiceImpl
 
 
         vo.setCanDelete(
+
                 !projectArchived
                         &&
                         (

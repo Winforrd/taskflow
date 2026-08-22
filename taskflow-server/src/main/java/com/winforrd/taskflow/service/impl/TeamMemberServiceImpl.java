@@ -22,8 +22,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class TeamMemberServiceImpl
-        implements TeamMemberService {
+public class TeamMemberServiceImpl implements TeamMemberService {
 
     private final TeamMemberMapper teamMemberMapper;
 
@@ -247,5 +246,16 @@ public class TeamMemberServiceImpl
         }
 
         teamMemberMapper.deleteById(currentMember.getId());
+    }
+
+    /**
+     * 获取团队管理员
+     */
+    @Override
+    public List<TeamMember> getTeamAdmins(Long teamId) {
+
+        return teamMemberMapper.selectList(new LambdaQueryWrapper<TeamMember>()
+                        .eq(TeamMember::getTeamId, teamId)
+                        .in(TeamMember::getRoleType, TeamRole.OWNER.name(), TeamRole.ADMIN.name()));
     }
 }

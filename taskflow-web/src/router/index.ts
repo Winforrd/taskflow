@@ -301,6 +301,22 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
+      {
+        path: 'notifications',
+
+        name: 'Notifications',
+
+        component: () =>
+          import(
+            '@/views/notification/NotificationView.vue'
+          ),
+
+        meta: {
+          requiresAuth: true,
+          title: '通知中心'
+        }
+      },
+
     ]
   },
 
