@@ -316,3 +316,18 @@ CREATE TABLE notification (
                               KEY idx_notification_related (related_type,related_id)
 
 ) COMMENT='站内通知表';
+
+CREATE TABLE reminder_record(
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+
+    task_id BIGINT NOT NULL COMMENT '任务ID',
+
+    user_id BIGINT NOT NULL COMMENT '接收用户',
+
+    reminder_type VARCHAR(50) NOT NULL COMMENT '提醒类型',
+
+    created_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uk_task_user_type(task_id,user_id,reminder_type)
+
+)COMMENT='任务提醒记录表';

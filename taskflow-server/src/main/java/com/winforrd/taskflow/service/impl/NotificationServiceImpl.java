@@ -1,23 +1,29 @@
 package com.winforrd.taskflow.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.winforrd.taskflow.common.constant.RedisKeyConstant;
 import com.winforrd.taskflow.common.enums.NotificationType;
 import com.winforrd.taskflow.common.exception.BusinessException;
 import com.winforrd.taskflow.entity.Notification;
 import com.winforrd.taskflow.mapper.NotificationMapper;
 import com.winforrd.taskflow.service.NotificationService;
 import com.winforrd.taskflow.vo.NotificationVO;
+import com.winforrd.taskflow.websocket.NotificationWebSocketHandler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -26,6 +32,18 @@ public class NotificationServiceImpl
         implements NotificationService {
 
     private final NotificationMapper notificationMapper;
+
+    /**
+     * Redis 缓存：未读通知数量
+     */
+    private final StringRedisTemplate stringRedisTemplate;
+
+    /**
+     * WebSocket 实时推送处理器
+     */
+    private final NotificationWebSocketHandler webSocketHandler;
+
+
 
 
     /**
@@ -85,6 +103,7 @@ public class NotificationServiceImpl
 
     /**
      * 未读数量
+     * 优先读取 Redis 缓存，缓存未命中再查数据库并回填
      */
     @Override
     public Long getUnreadCount() {
@@ -92,8 +111,16 @@ public class NotificationServiceImpl
         Long currentUserId =
                 StpUtil.getLoginIdAsLong();
 
+        String key = RedisKeyConstant.NOTIFICATION_UNREAD_COUNT + currentUserId;
 
-        return notificationMapper.selectCount(
+        // 优先从 Redis 缓存获取
+        String countStr = stringRedisTemplate.opsForValue().get(key);
+        if (countStr != null) {
+            return Long.parseLong(countStr);
+        }
+
+        // 缓存未命中，查询数据库
+        Long dbCount = notificationMapper.selectCount(
 
                 new LambdaQueryWrapper<Notification>()
 
@@ -107,6 +134,10 @@ public class NotificationServiceImpl
                                 0
                         )
         );
+
+        // 回填缓存
+        stringRedisTemplate.opsForValue().set(key, String.valueOf(dbCount));
+        return dbCount;
     }
 
 
@@ -191,6 +222,10 @@ public class NotificationServiceImpl
         notificationMapper.updateById(
                 update
         );
+
+        // 同步更新 Redis 未读数量
+        String key = RedisKeyConstant.NOTIFICATION_UNREAD_COUNT + currentUserId;
+        stringRedisTemplate.opsForValue().decrement(key);
     }
 
 
@@ -231,11 +266,16 @@ public class NotificationServiceImpl
                                 LocalDateTime.now()
                         )
         );
+
+        // 同步更新 Redis 未读数量为 0
+        String key = RedisKeyConstant.NOTIFICATION_UNREAD_COUNT + currentUserId;
+        stringRedisTemplate.opsForValue().set(key, "0");
     }
 
 
     /**
      * 创建单个通知
+     * 落库同时：更新 Redis 未读数 + WebSocket 实时推送给在线用户
      */
     @Override
     @Transactional
@@ -303,11 +343,25 @@ public class NotificationServiceImpl
         notificationMapper.insert(
                 notification
         );
+
+        // ===== 新增：更新 Redis 未读数量 =====
+        String key = RedisKeyConstant.NOTIFICATION_UNREAD_COUNT + userId;
+        stringRedisTemplate.opsForValue().increment(key);
+
+        // ===== 新增：WebSocket 实时推送给目标用户 =====
+        Map<String, Object> message = new HashMap<>();
+        message.put("type", type.name());
+        message.put("title", title);
+        message.put("content", content);
+        message.put("relatedType", relatedType);
+        message.put("relatedId", relatedId);
+        webSocketHandler.send(userId, JSON.toJSONString(message));
     }
 
 
     /**
      * 批量创建通知
+     * 循环复用单条创建逻辑，自动同步 Redis 和 WebSocket
      */
     @Override
     @Transactional
@@ -391,28 +445,10 @@ public class NotificationServiceImpl
                 notification.getRelatedType()
         );
 
-
-        vo.setRelatedId(
-                notification.getRelatedId()
-        );
-
-
-        vo.setRead(
-                Integer.valueOf(1)
-                        .equals(
-                                notification.getIsRead()
-                        )
-        );
-
-
-        vo.setReadTime(
-                notification.getReadTime()
-        );
-
-
-        vo.setCreatedTime(
-                notification.getCreatedTime()
-        );
+        vo.setRelatedId(notification.getRelatedId());
+        vo.setRead(Integer.valueOf(1).equals(notification.getIsRead()));
+        vo.setReadTime(notification.getReadTime());
+        vo.setCreatedTime(notification.getCreatedTime());
 
 
         return vo;

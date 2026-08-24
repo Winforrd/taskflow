@@ -35,5 +35,10 @@ public enum NotificationType {
     /**
      * 任务评论
      */
-    TASK_COMMENT
+    TASK_COMMENT,
+
+    /**
+     * 任务截止
+     */
+    TASK_DEADLINE,
 }
