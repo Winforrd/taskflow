@@ -68,6 +68,16 @@
 
           </el-button>
 
+          <el-button
+              @click="
+                router.push(
+                  `/projects/${projectId}/statistics`
+                )
+              "
+            >
+              项目统计
+            </el-button>
+
 
           <!--
             编辑项目：

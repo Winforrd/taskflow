@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC
+        "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.winforrd.taskflow.mapper.ProjectStatisticsMapper">
+
+    <!-- =====================================================
+         项目全部任务
+    ===================================================== -->
+    <select id="countAllTasks" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM task
+        WHERE project_id = #{projectId}
+          AND deleted = 0
+    </select>
+
+    <!-- =====================================================
+         有效任务
+         CANCELLED不参加项目完成率计算。
+    ===================================================== -->
+    <select id="countValidTasks" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM task
+        WHERE project_id = #{projectId}
+          AND status != 'CANCELLED'
+          AND deleted = 0
+    </select>
+
+    <!-- =====================================================
+         已完成任务
+    ===================================================== -->
+    <select id="countDoneTasks" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM task
+        WHERE project_id = #{projectId}
+          AND status = 'DONE'
+          AND deleted = 0
+    </select>
+
+    <!-- =====================================================
+         当前逾期任务
+         DONE：已经完成，不再算逾期。
+         CANCELLED：已取消，也不算逾期。
+    ===================================================== -->
+    <select id="countOverdueTasks" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM task
+        WHERE project_id = #{projectId}
+          AND deadline IS NOT NULL
+          AND deadline <![CDATA[ < ]]> CURDATE()
+          AND status NOT IN (
+                             'DONE',
+                             'CANCELLED'
+            )
+          AND deleted = 0
+    </select>
+
+    <!-- =====================================================
+         状态分布
+    ===================================================== -->
+    <select id="selectStatusDistribution" resultType="com.winforrd.taskflow.vo.TaskStatusStatVO">
+        SELECT
+            status,
+            COUNT(*) AS count
+        FROM task
+        WHERE project_id = #{projectId}
+          AND deleted = 0
+        GROUP BY status
+    </select>
+
+    <!-- =====================================================
+         最近完成趋势
+         使用completed_time，而不是created_time。
+    ===================================================== -->
+    <select id="selectCompletionTrend" resultType="com.winforrd.taskflow.vo.ProjectTrendPointVO">
+        SELECT
+            DATE(completed_time) AS date,
+            COUNT(*) AS completedCount
+        FROM task
+        WHERE project_id = #{projectId}
+          AND status = 'DONE'
+          AND completed_time IS NOT NULL
+          AND DATE(completed_time) >= #{startDate}
+          AND deleted = 0
+        GROUP BY DATE(completed_time)
+        ORDER BY DATE(completed_time)
+    </select>
+
+    <!-- =====================================================
+         成员工作量
+         从project_member开始，
+         即使成员当前没有负责任何任务，也仍然会显示在统计列表中。
+         一个任务多人负责时，每个负责人都分别统计一次。
+    ===================================================== -->
+    <select id="selectMemberWorkloads" resultType="com.winforrd.taskflow.vo.MemberWorkloadVO">
+        SELECT
+            pm.user_id                 AS userId,
+            CASE
+                WHEN u.nickname IS NOT NULL AND u.nickname != ''
+                    THEN u.nickname
+                ELSE u.username
+                END                        AS memberName,
+            u.avatar                   AS avatar,
+            COUNT(DISTINCT ta.task_id) AS assignedCount,
+
+            COUNT(DISTINCT CASE WHEN t.status = 'TODO' THEN t.id END)        AS todoCount,
+            COUNT(DISTINCT CASE WHEN t.status = 'IN_PROGRESS' THEN t.id END) AS inProgressCount,
+            COUNT(DISTINCT CASE WHEN t.status = 'IN_REVIEW' THEN t.id END)  AS inReviewCount,
+            COUNT(DISTINCT CASE WHEN t.status = 'DONE' THEN t.id END)       AS doneCount,
+            COUNT(DISTINCT CASE WHEN t.status = 'CANCELLED' THEN t.id END)  AS cancelledCount,
+
+            COUNT(
+                    DISTINCT CASE
+                                 WHEN
+                                     t.deadline IS NOT NULL
+                                         AND t.deadline <![CDATA[ < ]]> CURDATE()
+                                         AND t.status NOT IN ('DONE', 'CANCELLED')
+                                     THEN t.id
+                END
+            ) AS overdueCount
+
+        FROM project_member pm
+                 INNER JOIN sys_user u
+                            ON u.id = pm.user_id
+                 LEFT JOIN task_assignee ta
+                           ON ta.user_id = pm.user_id
+                 LEFT JOIN task t
+                           ON t.id = ta.task_id
+                               AND t.project_id = #{projectId}
+                               AND t.deleted = 0
+        WHERE pm.project_id = #{projectId}
+        GROUP BY
+            pm.user_id,
+            u.username,
+            u.nickname,
+            u.avatar
+        ORDER BY
+            assignedCount DESC,
+            doneCount DESC,
+            memberName ASC
+    </select>
+</mapper>

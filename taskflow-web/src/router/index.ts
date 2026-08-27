@@ -317,6 +317,26 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
+      {
+        path:'projects/:projectId/statistics',
+
+        name:'ProjectStatistics',
+
+        component:
+          () =>
+            import(
+              '@/views/project/ProjectStatisticsView.vue'
+            ),
+
+        meta: {
+          requiresAuth:
+            true,
+
+          title:
+            '项目统计'
+        }
+      },
+
     ]
   },
 

@@ -204,7 +204,9 @@ CREATE TABLE task (
 
                       KEY idx_task_deadline (deadline),
 
-                      KEY idx_task_project_status (project_id, status)
+                      KEY idx_task_project_status (project_id, status),
+
+                      KEY idx_task_project_completed (project_id, completed_time)
 
 ) COMMENT='任务表';
 
@@ -219,10 +221,7 @@ CREATE TABLE task_assignee (
 
                                assigned_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-                               UNIQUE KEY uk_task_user (
-                                   task_id,
-                                   user_id
-                                   ),
+                               UNIQUE KEY uk_task_user (task_id,user_id),
 
                                KEY idx_assignee_task_id (task_id),
 
