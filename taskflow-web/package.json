@@ -12,11 +12,13 @@
     "axios": "^1.19.0",
     "element-plus": "^2.14.4",
     "pinia": "^4.0.2",
+    "sortablejs": "^1.15.7",
     "vue": "^3.5.40",
     "vue-router": "^5.2.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
+    "@types/sortablejs": "^1.15.9",
     "@vitejs/plugin-vue": "^6.0.8",
     "@vue/tsconfig": "^0.9.1",
     "typescript": "~6.0.2",

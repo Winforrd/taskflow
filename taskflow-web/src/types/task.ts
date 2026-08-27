@@ -55,6 +55,11 @@ export interface Task {
 
   completedTime?: string
 
+  /**
+   * 乐观锁版本号。
+   *
+   * 修改任务状态时必须把当前版本传给后端。
+   */
   version: number
 
   assignees: TaskAssignee[]
@@ -62,9 +67,9 @@ export interface Task {
   /**
    * 后端根据：
    *
-   * 状态
+   * 当前任务状态
    * +
-   * 权限
+   * 当前用户权限
    *
    * 计算出来的下一状态。
    */
@@ -127,6 +132,29 @@ export interface UpdateTaskRequest {
 
   deadline?: string
 
+  version: number
+}
+
+
+/**
+ * 修改任务状态。
+ *
+ * 对应后端：
+ *
+ * ChangeTaskStatusRequest.java
+ */
+export interface ChangeTaskStatusRequest {
+
+  /**
+   * 目标状态
+   */
+  targetStatus: TaskStatus
+
+  /**
+   * 当前任务版本号
+   *
+   * 用于乐观锁并发控制。
+   */
   version: number
 }
 

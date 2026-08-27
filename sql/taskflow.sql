@@ -202,7 +202,9 @@ CREATE TABLE task (
 
                       KEY idx_task_priority (priority),
 
-                      KEY idx_task_deadline (deadline)
+                      KEY idx_task_deadline (deadline),
+
+                      KEY idx_task_project_status (project_id, status)
 
 ) COMMENT='任务表';
 

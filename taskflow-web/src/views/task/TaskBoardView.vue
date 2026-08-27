@@ -11,14 +11,11 @@
           任务看板
         </h2>
 
-
         <div
           v-if="project"
           class="project-name"
         >
-
           {{ project.name }}
-
         </div>
 
       </div>
@@ -29,9 +26,7 @@
         <el-button
           @click="goProject"
         >
-
           返回项目
-
         </el-button>
 
 
@@ -40,9 +35,7 @@
           type="primary"
           @click="openCreateDialog"
         >
-
           创建任务
-
         </el-button>
 
       </div>
@@ -69,9 +62,7 @@
           type="primary"
           @click="loadTasks"
         >
-
           搜索
-
         </el-button>
 
       </div>
@@ -79,8 +70,25 @@
     </el-card>
 
 
+    <!-- 拖拽说明 -->
+    <el-alert
+      class="board-tip"
+      type="info"
+      :closable="false"
+      show-icon
+    >
+      <template #title>
+        可拖动任务卡片变更状态。
+        最终是否允许流转由后端状态机和权限规则决定。
+      </template>
+    </el-alert>
+
+
     <!-- 任务看板 -->
-    <div class="board">
+    <div
+      v-loading="loading"
+      class="board"
+    >
 
       <div
         v-for="column in columns"
@@ -91,26 +99,30 @@
         <div class="column-header">
 
           <span>
-
             {{ column.label }}
-
           </span>
 
 
           <el-tag size="small">
-
             {{
               getTasksByStatus(
                 column.status
               ).length
             }}
-
           </el-tag>
 
         </div>
 
 
-        <div class="task-list">
+        <!--
+          SortableJS挂载区域。
+
+          data-status用来判断用户把任务拖到了哪个状态。
+        -->
+        <div
+          class="task-list"
+          :data-status="column.status"
+        >
 
           <el-card
             v-for="task in getTasksByStatus(
@@ -118,15 +130,24 @@
             )"
             :key="task.id"
             class="task-card"
+            :class="{
+              'task-card-moving':
+                changingTaskId === task.id
+            }"
+            :data-task-id="task.id"
             shadow="hover"
-            @click="goTask(task.id)"
+            @click="handleTaskClick(task.id)"
           >
+
+            <!-- 拖拽区域 -->
+            <div class="task-drag-handle">
+              ⋮⋮
+            </div>
+
 
             <!-- 标题 -->
             <div class="task-title">
-
               {{ task.title }}
-
             </div>
 
 
@@ -141,13 +162,11 @@
                   )
                 "
               >
-
                 {{
                   getPriorityName(
                     task.priority
                   )
                 }}
-
               </el-tag>
 
 
@@ -155,9 +174,7 @@
                 v-if="task.deadline"
                 class="deadline"
               >
-
                 {{ task.deadline }}
-
               </span>
 
             </div>
@@ -172,7 +189,6 @@
                 :size="28"
                 :src="assignee.avatar"
               >
-
                 {{
                   (
                     assignee.nickname
@@ -180,7 +196,6 @@
                     assignee.username
                   ).charAt(0)
                 }}
-
               </el-avatar>
 
 
@@ -190,22 +205,52 @@
                 "
                 class="no-assignee"
               >
-
                 未指派
-
               </span>
 
+            </div>
+
+
+            <!--
+              当前用户可执行的下一状态。
+
+              这里不是安全校验，
+              真正权限仍然由后端控制。
+            -->
+            <div
+              v-if="
+                task.allowedNextStatuses
+                &&
+                task.allowedNextStatuses.length > 0
+              "
+              class="next-status-tip"
+            >
+              可流转：
+              {{
+                task.allowedNextStatuses
+                  .map(getStatusName)
+                  .join('、')
+              }}
             </div>
 
           </el-card>
 
 
+          <!--
+            注意：
+
+            task-list必须始终存在，
+            即使当前列没有任务。
+
+            否则空列无法成为Sortable拖拽目标。
+          -->
           <el-empty
             v-if="
               getTasksByStatus(
                 column.status
               ).length === 0
             "
+            class="empty-placeholder"
             :image-size="60"
             description="暂无任务"
           />
@@ -307,23 +352,19 @@
             >
 
               <span>
-
                 {{
                   member.nickname
                   || member.username
                 }}
-
               </span>
 
 
               <span class="member-role">
-
                 {{
                   getMemberIdentity(
                     member
                   )
                 }}
-
               </span>
 
             </el-option>
@@ -332,10 +373,8 @@
 
 
           <div class="form-tip">
-
             项目负责人、项目管理员可调度项目成员；
             只读成员不能成为任务负责人。
-
           </div>
 
         </el-form-item>
@@ -355,28 +394,22 @@
             <el-avatar
               :size="30"
             >
-
               {{
                 getCurrentUserName()
                   .charAt(0)
               }}
-
             </el-avatar>
 
 
             <div>
 
               <div>
-
                 {{ getCurrentUserName() }}
-
               </div>
 
 
               <div class="self-tip">
-
                 普通成员创建任务后自动由自己负责
-
               </div>
 
             </div>
@@ -437,9 +470,7 @@
         <el-button
           @click="createVisible = false"
         >
-
           取消
-
         </el-button>
 
 
@@ -448,9 +479,7 @@
           :loading="creating"
           @click="handleCreate"
         >
-
           创建
-
         </el-button>
 
       </template>
@@ -466,43 +495,60 @@
 
 import {
   computed,
+  nextTick,
+  onBeforeUnmount,
   onMounted,
   reactive,
   ref
 } from 'vue'
+
 
 import {
   useRoute,
   useRouter
 } from 'vue-router'
 
+
 import {
   ElMessage
 } from 'element-plus'
+
+
+import Sortable from 'sortablejs'
+
+
+import request from '@/utils/request'
+
 
 import {
   createTaskApi,
   getProjectTasksApi
 } from '@/api/task'
 
+
 import {
   getProjectDetailApi
 } from '@/api/project'
+
 
 import {
   getProjectMembersApi
 } from '@/api/projectMember'
 
+
 import {
   useUserStore
 } from '@/stores/user'
+
 
 import type {
   ProjectDetail,
   ProjectMember
 } from '@/types/project'
 
+
 import type {
+  ChangeTaskStatusRequest,
   Task,
   TaskPriority,
   TaskStatus
@@ -551,6 +597,45 @@ const createVisible =
 
 const creating =
   ref(false)
+
+
+/**
+ * 页面任务加载状态。
+ */
+const loading =
+  ref(false)
+
+
+/**
+ * 当前正在提交状态修改的任务。
+ *
+ * 防止用户快速连续拖动同一个任务。
+ */
+const changingTaskId =
+  ref<number | null>(
+    null
+  )
+
+
+/**
+ * 用来区分：
+ *
+ * 普通点击任务卡片
+ * 和
+ * 拖拽结束后的click事件。
+ */
+const dragging =
+  ref(false)
+
+
+/**
+ * 保存Sortable实例。
+ *
+ * 每次重新加载任务后会销毁旧实例并重新创建，
+ * 避免重复监听事件。
+ */
+const sortableInstances:
+  Sortable[] = []
 
 
 /**
@@ -608,7 +693,8 @@ const createForm =
 
     description: '',
 
-    priority:  'MEDIUM' as TaskPriority,
+    priority:
+      'MEDIUM' as TaskPriority,
 
     startDate: '',
 
@@ -642,7 +728,7 @@ const canCreateTask =
         !project.value
         ||
         project.value.status
-        === 'ARCHIVED'
+          === 'ARCHIVED'
       ) {
 
         return false
@@ -654,10 +740,10 @@ const canCreateTask =
        */
       if (
         project.value.myTeamRole
-        === 'OWNER'
+          === 'OWNER'
         ||
         project.value.myTeamRole
-        === 'ADMIN'
+          === 'ADMIN'
       ) {
 
         return true
@@ -682,10 +768,10 @@ const canCreateTask =
        */
       return (
         project.value.myProjectRole
-        === 'MANAGER'
+          === 'MANAGER'
         ||
         project.value.myProjectRole
-        === 'MEMBER'
+          === 'MEMBER'
       )
     }
   )
@@ -711,10 +797,10 @@ const canAssignOthers =
        */
       if (
         project.value.myTeamRole
-        === 'OWNER'
+          === 'OWNER'
         ||
         project.value.myTeamRole
-        === 'ADMIN'
+          === 'ADMIN'
       ) {
 
         return true
@@ -754,7 +840,7 @@ const assignableMembers =
       projectMembers.value.filter(
         member =>
           member.roleType
-          !== 'READ_ONLY'
+            !== 'READ_ONLY'
       )
   )
 
@@ -771,6 +857,18 @@ onMounted(
 
 
     await loadPage()
+
+  }
+)
+
+
+/**
+ * 离开页面时销毁所有Sortable实例。
+ */
+onBeforeUnmount(
+  () => {
+
+    destroySortables()
 
   }
 )
@@ -811,23 +909,405 @@ async function loadPage() {
 
 
 /**
- * 加载任务
+ * 加载任务。
+ *
+ * 每次任务列表变化后重新初始化Sortable。
  */
 async function loadTasks() {
 
-  const result =
-    await getProjectTasksApi(
-      projectId,
-      {
-        keyword:
-          keyword.value
-          || undefined
-      }
+  loading.value =
+    true
+
+
+  try {
+
+    const result =
+      await getProjectTasksApi(
+        projectId,
+        {
+          keyword:
+            keyword.value
+              || undefined
+        }
+      )
+
+
+    tasks.value =
+      result.data
+
+
+    /**
+     * 等Vue重新完成DOM渲染。
+     */
+    await nextTick()
+
+
+    initSortables()
+
+  }
+  finally {
+
+    loading.value =
+      false
+  }
+}
+
+
+/**
+ * 初始化看板拖拽。
+ */
+function initSortables() {
+
+  /**
+   * 防止多次loadTasks以后产生重复监听。
+   */
+  destroySortables()
+
+
+  const containers =
+    document.querySelectorAll<HTMLElement>(
+      '.task-list'
     )
 
 
-  tasks.value =
-    result.data
+  containers.forEach(
+    container => {
+
+      const sortable =
+        Sortable.create(
+          container,
+          {
+
+            /**
+             * 所有列属于同一个拖拽组。
+             */
+            group: {
+              name:
+                'task-board',
+
+              pull:
+                true,
+
+              put:
+                true
+            },
+
+
+            /**
+             * 拖拽动画。
+             */
+            animation:
+              180,
+
+
+            /**
+             * 只能通过拖拽图标拖动。
+             *
+             * 这样点击任务正文仍可以正常进入详情。
+             */
+            handle:
+              '.task-drag-handle',
+
+
+            /**
+             * 被拖动卡片样式。
+             */
+            ghostClass:
+              'task-card-ghost',
+
+
+            chosenClass:
+              'task-card-chosen',
+
+
+            dragClass:
+              'task-card-dragging',
+
+
+            /**
+             * 开始拖动。
+             */
+            onStart: () => {
+
+              dragging.value =
+                true
+            },
+
+
+            /**
+             * 拖动结束。
+             */
+            onEnd:
+              async event => {
+
+                await handleDragEnd(
+                  event
+                )
+
+
+                /**
+                 * Sortable结束后通常还会触发一次click。
+                 *
+                 * 延迟恢复，避免误进入任务详情。
+                 */
+                window.setTimeout(
+                  () => {
+
+                    dragging.value =
+                      false
+
+                  },
+                  100
+                )
+              }
+
+          }
+        )
+
+
+      sortableInstances.push(
+        sortable
+      )
+
+    }
+  )
+}
+
+
+/**
+ * 销毁全部Sortable实例。
+ */
+function destroySortables() {
+
+  while (
+    sortableInstances.length > 0
+  ) {
+
+    const instance =
+      sortableInstances.pop()
+
+
+    instance?.destroy()
+  }
+}
+
+
+/**
+ * 拖拽结束。
+ *
+ * 最重要的逻辑：
+ *
+ * 1. 找到任务
+ * 2. 获取原状态
+ * 3. 获取目标状态
+ * 4. 调后端状态机
+ * 5. 成功刷新
+ * 6. 失败刷新，恢复原位置
+ */
+async function handleDragEnd(
+  event: Sortable.SortableEvent
+) {
+
+  const taskId =
+    Number(
+      event.item.dataset.taskId
+    )
+
+
+  const fromStatus =
+    event.from.dataset.status as TaskStatus | undefined
+
+
+  const targetStatus =
+    event.to.dataset.status as TaskStatus | undefined
+
+
+  /**
+   * DOM属性不完整时直接恢复。
+   */
+  if (
+    !taskId
+    ||
+    !fromStatus
+    ||
+    !targetStatus
+  ) {
+
+    await loadTasks()
+
+    return
+  }
+
+
+  /**
+   * 同一列内拖动。
+   *
+   * 当前系统没有task_sort字段，
+   * 因此不保存同状态内的人工排序。
+   */
+  if (
+    fromStatus
+    === targetStatus
+  ) {
+
+    await loadTasks()
+
+    return
+  }
+
+
+  const task =
+    tasks.value.find(
+      item =>
+        item.id === taskId
+    )
+
+
+  if (!task) {
+
+    await loadTasks()
+
+    return
+  }
+
+
+  /**
+   * 防止重复提交。
+   */
+  if (
+    changingTaskId.value
+    !== null
+  ) {
+
+    ElMessage.warning(
+      '正在更新任务状态，请稍候'
+    )
+
+
+    await loadTasks()
+
+    return
+  }
+
+
+  /**
+   * 前端提前给用户更友好的提示。
+   *
+   * 注意：
+   *
+   * 这里不是安全边界。
+   * 即使前端判断通过，后端仍然必须再次执行：
+   *
+   * 状态机校验
+   * +
+   * 权限校验
+   * +
+   * 乐观锁校验。
+   */
+  if (
+    !task.allowedNextStatuses
+      .includes(
+        targetStatus
+      )
+  ) {
+
+    ElMessage.warning(
+      `当前任务不能从“${getStatusName(fromStatus)}”流转到“${getStatusName(targetStatus)}”`
+    )
+
+
+    /**
+     * 重新从服务器获取，
+     * Sortable刚才产生的DOM移动会被Vue恢复。
+     */
+    await loadTasks()
+
+    return
+  }
+
+
+  changingTaskId.value =
+    taskId
+
+
+  try {
+
+    const requestBody:
+      ChangeTaskStatusRequest = {
+
+        targetStatus,
+
+        /**
+         * 直接使用当前任务服务端返回的version。
+         */
+        version:
+          task.version
+
+      }
+
+
+    /**
+     * 复用现有后端接口：
+     *
+     * POST /api/tasks/{taskId}/status
+     */
+    await request.post(
+      `/tasks/${taskId}/status`,
+      requestBody
+    )
+
+
+    ElMessage.success(
+      `任务已移动到“${getStatusName(targetStatus)}”`
+    )
+
+
+    /**
+     * 必须重新请求。
+     *
+     * 因为后端状态变化后：
+     *
+     * version会增加
+     * allowedNextStatuses会改变
+     * completedTime可能改变
+     *
+     * 不能只修改本地task.status。
+     */
+    await loadTasks()
+
+  }
+  catch (error) {
+
+    /**
+     * axios统一拦截器通常已经显示了后端错误。
+     *
+     * 这里再给拖拽场景一个明确说明。
+     */
+    console.error(
+      '任务状态拖拽失败',
+      error
+    )
+
+
+    ElMessage.error(
+      '状态变更失败，任务已恢复到原位置'
+    )
+
+
+    /**
+     * 这是拖拽失败回滚的核心。
+     *
+     * 不手动操作DOM，
+     * 直接重新请求数据库真实状态。
+     */
+    await loadTasks()
+
+  }
+  finally {
+
+    changingTaskId.value =
+      null
+  }
 }
 
 
@@ -841,7 +1321,7 @@ function getTasksByStatus(
   return tasks.value.filter(
     task =>
       task.status
-      === status
+        === status
   )
 }
 
@@ -887,7 +1367,7 @@ function openCreateDialog() {
     !canAssignOthers.value
     &&
     currentUserId.value
-    !== null
+      !== null
   ) {
 
     createForm.assigneeIds = [
@@ -954,7 +1434,8 @@ async function handleCreate() {
         ? createForm.assigneeIds
 
         : (
-          currentUserId.value !== null
+          currentUserId.value
+            !== null
             ? [currentUserId.value]
             : []
         )
@@ -969,18 +1450,18 @@ async function handleCreate() {
         description:
           createForm.description
             .trim()
-          || undefined,
+            || undefined,
 
         priority:
           createForm.priority,
 
         startDate:
           createForm.startDate
-          || undefined,
+            || undefined,
 
         deadline:
           createForm.deadline
-          || undefined,
+            || undefined,
 
         assigneeIds
       }
@@ -999,12 +1480,34 @@ async function handleCreate() {
     await loadTasks()
 
   }
-
   finally {
 
     creating.value =
       false
   }
+}
+
+
+/**
+ * 卡片点击。
+ *
+ * 拖拽完成产生的click不会进入详情。
+ */
+function handleTaskClick(
+  taskId: number
+) {
+
+  if (
+    dragging.value
+  ) {
+
+    return
+  }
+
+
+  goTask(
+    taskId
+  )
 }
 
 
@@ -1033,13 +1536,9 @@ function goProject() {
 
 
 /**
- * ==================================================
  * 项目成员身份
  *
- * 重点：
- *
  * 项目负责人优先于MANAGER
- * ==================================================
  */
 function getMemberIdentity(
   member: ProjectMember
@@ -1095,6 +1594,38 @@ function getCurrentUserName() {
     ||
     '当前用户'
   )
+}
+
+
+/**
+ * 状态中文。
+ */
+function getStatusName(
+  status: TaskStatus
+) {
+
+  const map:
+    Record<TaskStatus, string> = {
+
+      TODO:
+        '待处理',
+
+      IN_PROGRESS:
+        '进行中',
+
+      IN_REVIEW:
+        '待验收',
+
+      DONE:
+        '已完成',
+
+      CANCELLED:
+        '已取消'
+
+    }
+
+
+  return map[status]
 }
 
 
@@ -1207,7 +1738,7 @@ function getPriorityType(
 
 .filter-card {
 
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 
 }
 
@@ -1217,6 +1748,13 @@ function getPriorityType(
   display: flex;
 
   gap: 10px;
+
+}
+
+
+.board-tip {
+
+  margin-bottom: 16px;
 
 }
 
@@ -1269,16 +1807,112 @@ function getPriorityType(
 }
 
 
+/**
+ * 每一列的实际拖拽容器。
+ *
+ * 必须有min-height，
+ * 否则空列很难拖进去。
+ */
+.task-list {
+
+  min-height: 430px;
+
+}
+
+
 .task-card {
+
+  position: relative;
 
   margin-bottom: 12px;
 
   cursor: pointer;
 
+  transition:
+    opacity 0.2s,
+    transform 0.2s,
+    box-shadow 0.2s;
+
+}
+
+
+.task-card-moving {
+
+  opacity: 0.6;
+
+  pointer-events: none;
+
+}
+
+
+/**
+ * 拖拽手柄。
+ */
+.task-drag-handle {
+
+  position: absolute;
+
+  top: 8px;
+
+  right: 10px;
+
+  padding: 2px 4px;
+
+  color: #909399;
+
+  font-size: 18px;
+
+  line-height: 1;
+
+  cursor: grab;
+
+  user-select: none;
+
+}
+
+
+.task-drag-handle:active {
+
+  cursor: grabbing;
+
+}
+
+
+/**
+ * Sortable占位卡片。
+ */
+.task-card-ghost {
+
+  opacity: 0.35;
+
+}
+
+
+/**
+ * 被选中的卡片。
+ */
+.task-card-chosen {
+
+  box-shadow:
+    0 4px 16px
+    rgba(0, 0, 0, 0.15);
+
+}
+
+
+/**
+ * 正在拖动。
+ */
+.task-card-dragging {
+
+  opacity: 0.8;
+
 }
 
 
 .task-title {
+
+  padding-right: 28px;
 
   font-weight: 500;
 
@@ -1328,6 +1962,26 @@ function getPriorityType(
   color: #909399;
 
   font-size: 12px;
+
+}
+
+
+.next-status-tip {
+
+  margin-top: 10px;
+
+  color: #909399;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+
+}
+
+
+.empty-placeholder {
+
+  pointer-events: none;
 
 }
 
