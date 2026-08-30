@@ -332,3 +332,29 @@ CREATE TABLE reminder_record(
     UNIQUE KEY uk_task_user_type(task_id,user_id,reminder_type)
 
 )COMMENT='任务提醒记录表';
+
+CREATE TABLE operation_log (
+                               id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '日志ID',
+                               user_id BIGINT NULL COMMENT '操作用户ID',
+                               username VARCHAR(100) NULL COMMENT '操作用户名称',
+                               team_id BIGINT NULL COMMENT '关联团队ID',
+                               project_id BIGINT NULL COMMENT '关联项目ID',
+                               task_id BIGINT NULL COMMENT '关联任务ID',
+                               module VARCHAR(50) NOT NULL COMMENT '模块：TEAM/PROJECT/TASK/COMMENT/NOTIFICATION/USER',
+                               operation VARCHAR(100) NOT NULL COMMENT '操作说明',
+                               http_method VARCHAR(10) NULL COMMENT 'HTTP方法',
+                               request_uri VARCHAR(500) NULL COMMENT '请求路径',
+                               request_params TEXT NULL COMMENT '请求参数',
+                               ip VARCHAR(100) NULL COMMENT '客户端IP',
+                               user_agent VARCHAR(500) NULL COMMENT 'User-Agent',
+                               success TINYINT NOT NULL DEFAULT 1 COMMENT '是否成功：1成功 0失败',
+                               error_message VARCHAR(1000) NULL COMMENT '失败原因',
+                               cost_ms BIGINT NULL COMMENT '执行耗时毫秒',
+                               created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+
+                               INDEX idx_operation_log_user (user_id, created_time),
+                               INDEX idx_operation_log_team (team_id, created_time),
+                               INDEX idx_operation_log_project (project_id, created_time),
+                               INDEX idx_operation_log_task (task_id, created_time),
+                               INDEX idx_operation_log_module (module, created_time)
+) COMMENT='系统操作日志';

@@ -337,6 +337,26 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
+      {
+        path: 'projects/:projectId/operation-logs',
+
+        name: 'ProjectOperationLogs',
+
+        component:
+          () =>
+            import(
+              '@/views/project/ProjectOperationLogView.vue'
+            ),
+
+        meta: {
+          requiresAuth:
+            true,
+
+          title:
+            '项目操作日志'
+        }
+      },
+
     ]
   },
 

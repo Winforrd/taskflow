@@ -78,6 +78,16 @@
               项目统计
             </el-button>
 
+            <el-button
+              @click="
+                router.push(
+                  `/projects/${projectId}/operation-logs`
+                )
+              "
+            >
+              操作日志
+            </el-button>
+
 
           <!--
             编辑项目：
