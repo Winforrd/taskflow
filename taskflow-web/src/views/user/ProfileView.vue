@@ -2,6 +2,8 @@
 
   <div class="profile-page">
 
+    <AvatarUploadCard />
+
     <el-row
       :gutter="20"
     >
@@ -299,6 +301,9 @@ import {
 import {
   changePasswordApi
 } from '@/api/user'
+
+import AvatarUploadCard
+  from '@/components/AvatarUploadCard.vue'
 
 
 const router =

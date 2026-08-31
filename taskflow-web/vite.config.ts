@@ -38,6 +38,11 @@ export default defineConfig({
 
         changeOrigin: true
 
+      },
+
+      '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
       }
 
     }
