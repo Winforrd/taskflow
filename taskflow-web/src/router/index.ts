@@ -357,6 +357,28 @@ const routes: RouteRecordRaw[] = [
         }
       },
 
+      {
+        path:
+          'projects/:projectId/extensions',
+
+        name:
+          'ProjectExtensions',
+
+        component:
+          () =>
+            import(
+              '@/views/project/ProjectExtensionsView.vue'
+            ),
+
+        meta: {
+          requiresAuth:
+            true,
+
+          title:
+            '项目扩展能力'
+        }
+      },
+
     ]
   },
 

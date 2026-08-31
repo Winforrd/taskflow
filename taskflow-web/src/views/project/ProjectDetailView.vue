@@ -88,6 +88,16 @@
               操作日志
             </el-button>
 
+            <el-button
+              @click="
+                router.push(
+                  `/projects/${projectId}/extensions`
+                )
+              "
+            >
+              扩展能力
+            </el-button>
+
 
           <!--
             编辑项目：
