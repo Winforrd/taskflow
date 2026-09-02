@@ -358,3 +358,69 @@ CREATE TABLE operation_log (
                                INDEX idx_operation_log_task (task_id, created_time),
                                INDEX idx_operation_log_module (module, created_time)
 ) COMMENT='系统操作日志';
+
+CREATE TABLE sub_task
+(
+    id BIGINT PRIMARY KEY AUTO_INCREMENT
+        COMMENT '子任务ID',
+
+
+    task_id BIGINT NOT NULL
+        COMMENT '父任务ID',
+
+
+    title VARCHAR(200)
+                   NOT NULL
+        COMMENT '子任务标题',
+
+
+    description VARCHAR(1000)
+        DEFAULT NULL
+        COMMENT '子任务描述',
+
+
+    status VARCHAR(20)
+                   NOT NULL
+        DEFAULT 'TODO'
+        COMMENT '子任务状态',
+
+
+    required_flag TINYINT
+                   NOT NULL
+        DEFAULT 1
+        COMMENT '是否必需子任务 0否 1是',
+
+
+    sort_order INT
+                   NOT NULL
+        DEFAULT 0
+        COMMENT '排序',
+
+
+    creator_id BIGINT
+                   NOT NULL
+        COMMENT '创建人',
+
+
+    completed_by BIGINT
+        DEFAULT NULL
+        COMMENT '完成用户',
+
+
+    completed_time DATETIME
+        DEFAULT NULL
+        COMMENT '完成时间',
+
+
+    created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    deleted TINYINT NOT NULL DEFAULT 0,
+
+    INDEX idx_sub_task_task_id(task_id),
+
+    INDEX idx_sub_task_required(task_id,required_flag,status)
+
+
+)COMMENT='任务子任务表';

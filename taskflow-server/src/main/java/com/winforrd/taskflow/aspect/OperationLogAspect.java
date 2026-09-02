@@ -11,12 +11,14 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import com.winforrd.taskflow.entity.OperationLog;
 import com.winforrd.taskflow.entity.Project;
+import com.winforrd.taskflow.entity.SubTask;
 import com.winforrd.taskflow.entity.SysUser;
 import com.winforrd.taskflow.entity.Task;
 
 
 import com.winforrd.taskflow.mapper.OperationLogMapper;
 import com.winforrd.taskflow.mapper.ProjectMapper;
+import com.winforrd.taskflow.mapper.SubTaskMapper;
 import com.winforrd.taskflow.mapper.SysUserMapper;
 import com.winforrd.taskflow.mapper.TaskMapper;
 
@@ -94,6 +96,10 @@ public class OperationLogAspect {
             taskMapper;
 
 
+    private final SubTaskMapper
+            subTaskMapper;
+
+
     private final ProjectMapper
             projectMapper;
 
@@ -127,6 +133,12 @@ public class OperationLogAspect {
     private static final Pattern TASK_PATTERN =
             Pattern.compile(
                     "/api/tasks/(\\d+)"
+            );
+
+
+    private static final Pattern SUBTASK_PATTERN =
+            Pattern.compile(
+                    "/api/subtasks/(\\d+)"
             );
 
 
@@ -706,6 +718,47 @@ public class OperationLogAspect {
 
         /**
          * =================================================
+         * 子任务独立路径：
+         *
+         * /api/subtasks/{id}
+         * /api/subtasks/{id}/status
+         *
+         * URL 中没有 taskId，需要反查子任务。
+         * =================================================
+         */
+        if (taskId == null) {
+
+
+            Long subTaskId =
+                    extractId(
+
+                            SUBTASK_PATTERN,
+
+                            uri
+
+                    );
+
+
+            if (subTaskId != null) {
+
+
+                SubTask subTask =
+                        subTaskMapper.selectById(
+                                subTaskId
+                        );
+
+
+                if (subTask != null) {
+
+                    taskId =
+                            subTask.getTaskId();
+                }
+            }
+        }
+
+
+        /**
+         * =================================================
          * 第三步：
          *
          * 如果拿到了taskId，
@@ -990,7 +1043,30 @@ public class OperationLogAspect {
             }
 
 
+            if (
+                    uri.contains(
+                            "/subtasks"
+                    )
+            ) {
+
+                return "SUB_TASK";
+            }
+
+
             return "TASK";
+        }
+
+
+        /**
+         * /api/subtasks/**
+         */
+        if (
+                uri.startsWith(
+                        "/api/subtasks/"
+                )
+        ) {
+
+            return "SUB_TASK";
         }
 
 
@@ -1162,6 +1238,64 @@ public class OperationLogAspect {
 
                 return "删除评论";
             }
+        }
+
+
+        /**
+         * =================================================
+         * 子任务
+         * =================================================
+         */
+        if (
+                uri.contains(
+                        "/subtasks"
+                )
+        ) {
+
+
+            if (
+                    uri.matches(
+                            "/api/tasks/\\d+/subtasks/\\d+/status/?"
+                    )
+            ) {
+
+                return "变更子任务状态";
+            }
+
+
+            if (
+                    uri.matches(
+                            "/api/tasks/\\d+/subtasks/?"
+                    )
+                    && "POST".equals(method)
+            ) {
+
+                return "创建子任务";
+            }
+
+
+            if (
+                    uri.matches(
+                            "/api/tasks/\\d+/subtasks/\\d+/?"
+                    )
+            ) {
+
+                return switch (method) {
+
+                    case "PUT",
+                         "PATCH" ->
+                            "修改子任务";
+
+                    case "DELETE" ->
+                            "删除子任务";
+
+                    default ->
+                            "子任务操作";
+                };
+            }
+
+
+            return "子任务操作";
         }
 
 

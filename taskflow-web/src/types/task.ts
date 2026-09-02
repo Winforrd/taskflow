@@ -94,6 +94,11 @@ export interface Task {
    */
   canAssignOthers: boolean
 
+  /**
+   * 能否创建子任务。
+   */
+  canCreateSubTask: boolean
+
   createdTime?: string
 }
 

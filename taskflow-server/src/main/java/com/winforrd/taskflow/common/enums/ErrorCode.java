@@ -103,7 +103,17 @@ public enum ErrorCode {
 
     TASK_COMMENT_CONTENT_EMPTY(400, "评论内容不能为空"),
 
-    TASK_COMMENT_CONTENT_TOO_LONG(400, "评论内容不能超过2000个字符");
+    TASK_COMMENT_CONTENT_TOO_LONG(400, "评论内容不能超过2000个字符"),
+
+    SUB_TASK_NOT_FOUND(404, "子任务不存在"),
+
+    SUB_TASK_PERMISSION_DENIED(403, "没有子任务操作权限"),
+
+    SUB_TASK_TITLE_EMPTY(400, "子任务标题不能为空"),
+
+    SUB_TASK_TITLE_TOO_LONG(400, "子任务标题不能超过200个字符"),
+
+    SUB_TASK_REQUIRED_UNFINISHED(400, "存在未完成必需子任务，不能提交验收或完成任务");
 
     private final Integer code;
     private final String message;

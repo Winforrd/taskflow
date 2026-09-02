@@ -118,6 +118,18 @@ public class TaskVO {
     private Boolean canAssignOthers;
 
     /**
+     * 当前用户是否可以创建子任务
+     *
+     * 允许：
+     * 团队 OWNER / ADMIN
+     * 项目负责人
+     * 项目 MANAGER
+     * 任务创建者
+     * 任务负责人
+     */
+    private Boolean canCreateSubTask;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createdTime;

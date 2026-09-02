@@ -245,6 +245,12 @@
 
         </el-card>
 
+        <SubTaskPanel
+          :task-id="task.id"
+          :can-create="task.canCreateSubTask"
+          @changed="loadActivities"
+        />
+
 
         <!-- ============================== -->
         <!-- 评论区域 -->
@@ -721,6 +727,8 @@ import type {
 import type {
   TaskComment
 } from '@/types/taskComment'
+
+import SubTaskPanel from '@/components/SubTaskPanel.vue'
 
 
 const route =
@@ -1475,6 +1483,18 @@ function getNoActionText() {
     return task.value.canManageAssignees
       ? '当前任务尚未分配负责人，请先分配负责人'
       : '当前任务尚未分配负责人，等待管理员进行任务调度'
+  }
+
+
+  if (
+    task.value.status === 'IN_PROGRESS'
+    &&
+    !task.value.allowedNextStatuses.includes(
+      'IN_REVIEW'
+    )
+  ) {
+
+    return '无法提交验收：请确认必需子任务已全部完成，且你是任务负责人'
   }
 
 

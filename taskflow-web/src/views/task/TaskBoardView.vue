@@ -87,6 +87,7 @@
     <div
       v-loading="loading"
       class="board"
+      :key="boardRenderKey"
     >
 
       <div
@@ -612,6 +613,18 @@ const sortableInstances:
 
 
 /**
+ * 强制重建看板 DOM。
+ *
+ * Sortable 会直接改真实 DOM；
+ * 当后端拒绝状态变更后，
+ * 如果 tasks 数据没变，Vue 不会把卡片移回原列。
+ * 通过 key 强制整板重挂载即可回滚。
+ */
+const boardRenderKey =
+  ref(0)
+
+
+/**
  * 五列任务看板。
  */
 const columns = [
@@ -891,6 +904,13 @@ async function loadTasks() {
       result.data
 
 
+    /**
+     * 强制重建看板，消除 Sortable 造成的 DOM 漂移。
+     */
+    boardRenderKey.value +=
+      1
+
+
     await nextTick()
 
 
@@ -1088,6 +1108,30 @@ async function handleDragEnd(
   }
 
 
+  /**
+   * 前端先拦截明显非法流转，
+   * 避免出现“提示失败但卡片已挪走”的错觉。
+   *
+   * 最终仍以后端状态机为准。
+   */
+  if (
+    !canTransitionLocally(
+      fromStatus,
+      targetStatus
+    )
+  ) {
+
+    ElMessage.error(
+      '当前任务状态不允许执行该操作'
+    )
+
+
+    await loadTasks()
+
+    return
+  }
+
+
   const task =
     tasks.value.find(
       item =>
@@ -1218,8 +1262,54 @@ function getTasksByStatus(
   return tasks.value.filter(
     task =>
       task.status
-        === status
+      === status
   )
+}
+
+
+/**
+ * 与后端状态机保持一致的本地流转校验。
+ *
+ * TODO → IN_PROGRESS / CANCELLED
+ * IN_PROGRESS → IN_REVIEW / CANCELLED
+ * IN_REVIEW → IN_PROGRESS / DONE
+ */
+function canTransitionLocally(
+  currentStatus: TaskStatus,
+  targetStatus: TaskStatus
+) {
+
+  const map: Record<
+    TaskStatus,
+    TaskStatus[]
+  > = {
+
+    TODO: [
+      'IN_PROGRESS',
+      'CANCELLED'
+    ],
+
+    IN_PROGRESS: [
+      'IN_REVIEW',
+      'CANCELLED'
+    ],
+
+    IN_REVIEW: [
+      'IN_PROGRESS',
+      'DONE'
+    ],
+
+    DONE: [],
+
+    CANCELLED: []
+
+  }
+
+  return map[currentStatus]
+    ?.includes(
+      targetStatus
+    )
+    ?? false
 }
 
 

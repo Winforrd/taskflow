@@ -28,10 +28,7 @@ import com.winforrd.taskflow.mapper.TaskActivityMapper;
 import com.winforrd.taskflow.mapper.TaskAssigneeMapper;
 import com.winforrd.taskflow.mapper.TaskMapper;
 import com.winforrd.taskflow.mapper.TaskStatusRecordMapper;
-import com.winforrd.taskflow.service.NotificationService;
-import com.winforrd.taskflow.service.ProjectMemberService;
-import com.winforrd.taskflow.service.TaskService;
-import com.winforrd.taskflow.service.TeamMemberService;
+import com.winforrd.taskflow.service.*;
 import com.winforrd.taskflow.vo.TaskActivityVO;
 import com.winforrd.taskflow.vo.TaskAssigneeVO;
 import com.winforrd.taskflow.vo.TaskVO;
@@ -54,6 +51,8 @@ public class TaskServiceImpl
         implements TaskService {
 
     private final TaskMapper taskMapper;
+
+    private final SubTaskService subTaskService;
 
     private final TaskAssigneeMapper taskAssigneeMapper;
 
@@ -650,16 +649,42 @@ public class TaskServiceImpl
         );
 
 
+        /**
+         * 提交验收 / 完成任务前：
+         * 必需子任务必须全部完成。
+         */
+        if (
+                TaskStatus.IN_REVIEW.name()
+                        .equals(targetStatus)
+                        ||
+                        TaskStatus.DONE.name()
+                                .equals(targetStatus)
+        ) {
+
+            boolean exists =
+                    subTaskService
+                            .existsRequiredUnfinished(
+                                    taskId
+                            );
+
+            if (exists) {
+
+                throw new BusinessException(
+                        ErrorCode.SUB_TASK_REQUIRED_UNFINISHED
+                );
+            }
+        }
+
+
         if (
                 TaskStatus.DONE.name()
-                        .equals(
-                                targetStatus
-                        )
+                        .equals(targetStatus)
         ) {
 
             update.setCompletedTime(
                     LocalDateTime.now()
             );
+
         }
 
 
@@ -2403,6 +2428,11 @@ public class TaskServiceImpl
                             task.getId(),
                             userId
                     )
+                            &&
+                            !subTaskService
+                                    .existsRequiredUnfinished(
+                                            task.getId()
+                                    )
             ) {
 
                 result.add(
@@ -2452,9 +2482,17 @@ public class TaskServiceImpl
                 );
 
 
-                result.add(
-                        TaskStatus.DONE.name()
-                );
+                if (
+                        !subTaskService
+                                .existsRequiredUnfinished(
+                                        task.getId()
+                                )
+                ) {
+
+                    result.add(
+                            TaskStatus.DONE.name()
+                    );
+                }
             }
         }
 
@@ -3047,6 +3085,14 @@ public class TaskServiceImpl
                 calculateCanAssignOthers(
                         project,
                         task,
+                        currentUserId
+                )
+        );
+
+
+        vo.setCanCreateSubTask(
+                subTaskService.canCreateSubTask(
+                        task.getId(),
                         currentUserId
                 )
         );
