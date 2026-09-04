@@ -251,6 +251,11 @@
           @changed="loadActivities"
         />
 
+        <TaskTagPanel
+        :task-id="task.id"
+        @changed="loadActivities"
+      />
+
 
         <!-- ============================== -->
         <!-- 评论区域 -->
@@ -729,6 +734,10 @@ import type {
 } from '@/types/taskComment'
 
 import SubTaskPanel from '@/components/SubTaskPanel.vue'
+
+import TaskTagPanel
+  from '@/components/TaskTagPanel.vue'
+
 
 
 const route =

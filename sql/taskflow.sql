@@ -424,3 +424,94 @@ CREATE TABLE sub_task
 
 
 )COMMENT='任务子任务表';
+
+CREATE TABLE tag
+(
+    id BIGINT PRIMARY KEY AUTO_INCREMENT
+        COMMENT '标签ID',
+
+    scope_type VARCHAR(20) NOT NULL
+        COMMENT '标签范围：TEAM / PROJECT',
+
+    scope_id BIGINT NOT NULL
+        COMMENT '范围ID：TEAM时为team_id，PROJECT时为project_id',
+
+    name VARCHAR(50) NOT NULL
+        COMMENT '标签名称',
+
+    color VARCHAR(20) NOT NULL DEFAULT '#409EFF'
+        COMMENT '标签颜色，例如 #409EFF',
+
+    creator_id BIGINT NOT NULL
+        COMMENT '创建用户ID',
+
+    created_time DATETIME NOT NULL
+                               DEFAULT CURRENT_TIMESTAMP
+        COMMENT '创建时间',
+
+    updated_time DATETIME NOT NULL
+                               DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP
+        COMMENT '更新时间',
+
+    deleted TINYINT NOT NULL DEFAULT 0
+        COMMENT '逻辑删除：0正常 1删除',
+
+    UNIQUE KEY uk_tag_scope_name_deleted
+        (
+        scope_type,
+        scope_id,
+        name,
+        deleted
+        ),
+
+    KEY idx_tag_scope
+        (
+        scope_type,
+        scope_id
+    ),
+
+    KEY idx_tag_creator
+        (
+        creator_id
+    )
+
+)
+    COMMENT='团队和项目标签表';
+
+CREATE TABLE task_tag
+(
+    id BIGINT PRIMARY KEY AUTO_INCREMENT
+        COMMENT '主键',
+
+    task_id BIGINT NOT NULL
+        COMMENT '任务ID',
+
+    tag_id BIGINT NOT NULL
+        COMMENT '标签ID',
+
+    created_by BIGINT NOT NULL
+        COMMENT '绑定用户ID',
+
+    created_time DATETIME NOT NULL
+        DEFAULT CURRENT_TIMESTAMP
+        COMMENT '绑定时间',
+
+    UNIQUE KEY uk_task_tag
+        (
+        task_id,
+        tag_id
+        ),
+
+    KEY idx_task_tag_task
+        (
+        task_id
+    ),
+
+    KEY idx_task_tag_tag
+        (
+        tag_id
+    )
+
+)
+    COMMENT='任务标签关联表';

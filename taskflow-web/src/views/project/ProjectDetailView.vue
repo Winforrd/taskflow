@@ -5,12 +5,20 @@
     class="project-detail-page"
   >
 
-    <el-card>
+    <!-- ================================================= -->
+    <!-- 项目基本信息 -->
+    <!-- ================================================= -->
+    <el-card
+      class="project-info-card"
+    >
 
       <!-- 顶部 -->
       <div class="header">
 
-        <div>
+        <!-- ================================================= -->
+        <!-- 左侧项目基本信息 -->
+        <!-- ================================================= -->
+        <div class="project-heading">
 
           <div class="code">
 
@@ -38,6 +46,9 @@
         </div>
 
 
+        <!-- ================================================= -->
+        <!-- 右侧操作 -->
+        <!-- ================================================= -->
         <div class="header-actions">
 
           <!-- 返回项目列表 -->
@@ -49,17 +60,20 @@
 
           </el-button>
 
+
+          <!-- 任务看板 -->
           <el-button
             type="primary"
             plain
             @click="goTasks"
           >
+
             任务看板
+
           </el-button>
 
 
-          <!-- 所有人只要能看项目
-               就可以查看成员 -->
+          <!-- 项目成员 -->
           <el-button
             @click="goMembers"
           >
@@ -68,35 +82,47 @@
 
           </el-button>
 
+
+          <!-- 项目统计 -->
           <el-button
-              @click="
-                router.push(
-                  `/projects/${projectId}/statistics`
-                )
-              "
-            >
-              项目统计
-            </el-button>
+            @click="
+              router.push(
+                `/projects/${projectId}/statistics`
+              )
+            "
+          >
 
-            <el-button
-              @click="
-                router.push(
-                  `/projects/${projectId}/operation-logs`
-                )
-              "
-            >
-              操作日志
-            </el-button>
+            项目统计
 
-            <el-button
-              @click="
-                router.push(
-                  `/projects/${projectId}/extensions`
-                )
-              "
-            >
-              扩展能力
-            </el-button>
+          </el-button>
+
+
+          <!-- 操作日志 -->
+          <el-button
+            @click="
+              router.push(
+                `/projects/${projectId}/operation-logs`
+              )
+            "
+          >
+
+            操作日志
+
+          </el-button>
+
+
+          <!-- 扩展能力 -->
+          <el-button
+            @click="
+              router.push(
+                `/projects/${projectId}/extensions`
+              )
+            "
+          >
+
+            扩展能力
+
+          </el-button>
 
 
           <!--
@@ -127,7 +153,7 @@
             团队 OWNER / ADMIN
             项目负责人
 
-            MANAGER 看不到这个按钮
+            MANAGER不能归档。
           -->
           <el-button
             v-if="
@@ -152,7 +178,9 @@
       <el-divider />
 
 
+      <!-- ================================================= -->
       <!-- 项目详细信息 -->
+      <!-- ================================================= -->
       <el-descriptions
         :column="2"
         border
@@ -254,7 +282,25 @@
     </el-card>
 
 
+    <!-- ================================================= -->
+    <!-- 项目标签 -->
+    <!-- ================================================= -->
+    <!--
+      标签管理必须脱离header-actions。
+
+      TagManager自身是独立el-card，
+      这里作为项目详情的第二个完整区域展示。
+    -->
+    <TagManager
+      :scope-id="projectId"
+      scope-type="PROJECT"
+      title="项目标签"
+    />
+
+
+    <!-- ================================================= -->
     <!-- 编辑项目 -->
+    <!-- ================================================= -->
     <el-dialog
       v-model="editVisible"
       title="编辑项目"
@@ -291,10 +337,12 @@
               value="NOT_STARTED"
             />
 
+
             <el-option
               label="进行中"
               value="IN_PROGRESS"
             />
+
 
             <el-option
               label="已完成"
@@ -386,15 +434,18 @@ import {
   ref
 } from 'vue'
 
+
 import {
   useRoute,
   useRouter
 } from 'vue-router'
 
+
 import {
   ElMessage,
   ElMessageBox
 } from 'element-plus'
+
 
 import {
   archiveProjectApi,
@@ -402,15 +453,21 @@ import {
   updateProjectApi
 } from '@/api/project'
 
+
 import {
   useUserStore
 } from '@/stores/user'
+
 
 import type {
   ProjectDetail,
   ProjectRole,
   ProjectStatus
 } from '@/types/project'
+
+
+import TagManager
+  from '@/components/TagManager.vue'
 
 
 const route =
@@ -448,7 +505,8 @@ const editForm =
 
     description: '',
 
-    status:  'NOT_STARTED'  as ProjectStatus,
+    status:
+      'NOT_STARTED' as ProjectStatus,
 
     startDate: '',
 
@@ -464,7 +522,8 @@ onMounted(
       !userStore.userInfo
     ) {
 
-      await userStore.getUserInfo()
+      await userStore
+        .getUserInfo()
     }
 
 
@@ -475,7 +534,9 @@ onMounted(
 
 
 /**
+ * =========================================================
  * 加载项目详情
+ * =========================================================
  */
 async function loadProject() {
 
@@ -491,7 +552,9 @@ async function loadProject() {
 
 
 /**
+ * =========================================================
  * 打开编辑
+ * =========================================================
  */
 function openEdit() {
 
@@ -532,7 +595,9 @@ function openEdit() {
 
 
 /**
+ * =========================================================
  * 保存修改
+ * =========================================================
  */
 async function handleUpdate() {
 
@@ -545,7 +610,7 @@ async function handleUpdate() {
 
 
   /**
-   * 前端再次保护
+   * 前端再次保护。
    */
   if (
     !project.value.canEdit
@@ -560,7 +625,9 @@ async function handleUpdate() {
 
 
   await updateProjectApi(
+
     projectId,
+
     {
       name:
         editForm.name,
@@ -580,6 +647,7 @@ async function handleUpdate() {
         editForm.deadline
         || undefined
     }
+
   )
 
 
@@ -597,7 +665,9 @@ async function handleUpdate() {
 
 
 /**
+ * =========================================================
  * 归档项目
+ * =========================================================
  */
 async function handleArchive() {
 
@@ -610,9 +680,7 @@ async function handleArchive() {
 
 
   /**
-   * 前端再次校验
-   *
-   * MANAGER 会在这里被拦住
+   * MANAGER在这里仍然会被拦住。
    */
   if (
     !project.value.canManageProject
@@ -629,8 +697,11 @@ async function handleArchive() {
   try {
 
     await ElMessageBox.confirm(
+
       '项目归档后将进入只读状态，确定要归档吗？',
+
       '归档项目',
+
       {
         confirmButtonText:
           '确定归档',
@@ -641,10 +712,10 @@ async function handleArchive() {
         type:
           'warning'
       }
+
     )
 
   }
-
   catch {
 
     return
@@ -666,7 +737,9 @@ async function handleArchive() {
 
 
 /**
- * 项目成员页面
+ * =========================================================
+ * 项目成员
+ * =========================================================
  */
 function goMembers() {
 
@@ -677,7 +750,9 @@ function goMembers() {
 
 
 /**
+ * =========================================================
  * 返回项目列表
+ * =========================================================
  */
 function goProjectList() {
 
@@ -694,6 +769,12 @@ function goProjectList() {
   )
 }
 
+
+/**
+ * =========================================================
+ * 任务看板
+ * =========================================================
+ */
 function goTasks() {
 
   router.push(
@@ -703,7 +784,9 @@ function goTasks() {
 
 
 /**
+ * =========================================================
  * 当前身份
+ * =========================================================
  */
 function getMyIdentity() {
 
@@ -716,14 +799,13 @@ function getMyIdentity() {
 
 
   /**
-   * 判断项目负责人
+   * 项目负责人必须先判断。
    *
-   * 注意：
-   * 负责人也是 MANAGER，
-   * 所以必须先判断 ownerId
+   * 因为负责人通常也属于MANAGER。
    */
   if (
-    userStore.userInfo?.id ===
+    userStore.userInfo?.id
+    ===
     project.value.ownerId
   ) {
 
@@ -731,9 +813,6 @@ function getMyIdentity() {
   }
 
 
-  /**
-   * 团队 OWNER
-   */
   if (
     project.value.myTeamRole
     === 'OWNER'
@@ -743,9 +822,6 @@ function getMyIdentity() {
   }
 
 
-  /**
-   * 团队 ADMIN
-   */
   if (
     project.value.myTeamRole
     === 'ADMIN'
@@ -770,7 +846,9 @@ function getMyIdentity() {
 
 
 /**
+ * =========================================================
  * 项目角色中文
+ * =========================================================
  */
 function getRoleName(
   role: ProjectRole
@@ -796,7 +874,9 @@ function getRoleName(
 
 
 /**
+ * =========================================================
  * 状态中文
+ * =========================================================
  */
 function getStatusName(
   status: ProjectStatus
@@ -825,12 +905,14 @@ function getStatusName(
 
 
 /**
- * 状态 Tag
+ * =========================================================
+ * 状态标签类型
+ * =========================================================
  */
 function getStatusType(
   status: ProjectStatus
 ):
-  'primary'
+  | 'primary'
   | 'success'
   | 'warning'
   | 'info' {
@@ -860,7 +942,9 @@ function getStatusType(
 
 
 /**
- * 时间格式化
+ * =========================================================
+ * 时间格式
+ * =========================================================
  */
 function formatTime(
   value?: string
@@ -892,6 +976,19 @@ function formatTime(
 
   width: 100%;
 
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 20px;
+
+}
+
+
+.project-info-card {
+
+  width: 100%;
+
 }
 
 
@@ -905,6 +1002,17 @@ function formatTime(
   align-items:
     flex-start;
 
+  gap: 24px;
+
+}
+
+
+.project-heading {
+
+  flex: 1;
+
+  min-width: 0;
+
 }
 
 
@@ -912,7 +1020,29 @@ function formatTime(
 
   display: flex;
 
+  align-items: center;
+
+  justify-content:
+    flex-end;
+
+  flex-wrap: wrap;
+
   gap: 10px;
+
+  max-width: 900px;
+
+}
+
+
+/**
+ * Element Plus自身会给连续按钮加margin-left。
+ * 使用gap后清掉。
+ */
+.header-actions :deep(
+  .el-button + .el-button
+) {
+
+  margin-left: 0;
 
 }
 
@@ -937,6 +1067,30 @@ function formatTime(
   color: #909399;
 
   font-size: 13px;
+
+}
+
+
+@media (
+  max-width: 1100px
+) {
+
+  .header {
+
+    flex-direction:
+      column;
+
+  }
+
+
+  .header-actions {
+
+    justify-content:
+      flex-start;
+
+    max-width: none;
+
+  }
 
 }
 
