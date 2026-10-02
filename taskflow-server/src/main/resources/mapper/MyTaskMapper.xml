@@ -59,10 +59,28 @@
         WHERE
         tm.team_id = p.team_id
         AND tm.user_id = #{userId}
+        AND tm.member_status = 1
+        AND tm.role_type IN (
+        'OWNER',
+        'ADMIN'
+        )
 
         )
 
-        OR EXISTS (
+        OR (
+        EXISTS (
+
+        SELECT 1
+
+        FROM team_member tm
+
+        WHERE
+        tm.team_id = p.team_id
+        AND tm.user_id = #{userId}
+        AND tm.member_status = 1
+
+        )
+        AND EXISTS (
 
         SELECT 1
 
@@ -71,6 +89,8 @@
         WHERE
         pm.project_id = p.id
         AND pm.user_id = #{userId}
+
+        )
         )
         )
 
@@ -185,6 +205,7 @@
         WHERE
         tm.team_id = p.team_id
         AND tm.user_id = #{userId}
+        AND tm.member_status = 1
         AND tm.role_type IN (
         'OWNER',
         'ADMIN'

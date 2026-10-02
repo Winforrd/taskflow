@@ -1,22 +1,63 @@
+import { getToken } from '@/utils/auth'
+
 let socket: WebSocket | null = null
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let shouldReconnect = false
+let reconnectAttempts = 0
 
 /**
- * 建立 WebSocket 实时通知连接
- * @param userId 当前登录用户ID
+ * 基于当前页面协议与 host 构建 WS 地址（开发环境走 Vite /ws 代理）
  */
-export function connectWebSocket(userId: number) {
-  // 防止重复连接
-  if (socket && socket.readyState === WebSocket.OPEN) {
+function buildWsUrl(): string {
+  const token = getToken() || ''
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${window.location.host}/ws/notification?token=${encodeURIComponent(token)}`
+}
+
+function clearReconnectTimer() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer)
+    reconnectTimer = null
+  }
+}
+
+function scheduleReconnect() {
+  if (!shouldReconnect) {
+    return
+  }
+  clearReconnectTimer()
+  const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
+  reconnectAttempts += 1
+  reconnectTimer = setTimeout(() => {
+    if (shouldReconnect) {
+      openSocket()
+    }
+  }, delay)
+}
+
+function openSocket() {
+  if (
+    socket &&
+    (socket.readyState === WebSocket.OPEN ||
+      socket.readyState === WebSocket.CONNECTING)
+  ) {
     return
   }
 
-  socket = new WebSocket(`ws://localhost:8080/ws/notification?userId=${userId}`)
+  const token = getToken()
+  if (!token) {
+    return
+  }
 
-  // 收到后端推送的消息，派发全局事件
+  socket = new WebSocket(buildWsUrl())
+
+  socket.onopen = () => {
+    reconnectAttempts = 0
+  }
+
   socket.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data)
-      console.log('收到实时通知', data)
       window.dispatchEvent(
         new CustomEvent('notification', {
           detail: data
@@ -27,22 +68,34 @@ export function connectWebSocket(userId: number) {
     }
   }
 
-  // 连接关闭：重置状态
   socket.onclose = () => {
     socket = null
+    scheduleReconnect()
   }
 
-  // 连接异常：关闭并重置
   socket.onerror = () => {
     socket?.close()
-    socket = null
   }
+}
+
+/**
+ * 建立 WebSocket 实时通知连接
+ * @param _userId 当前登录用户ID（兼容旧调用；实际身份由 token 决定）
+ */
+export function connectWebSocket(_userId: number) {
+  shouldReconnect = true
+  reconnectAttempts = 0
+  clearReconnectTimer()
+  openSocket()
 }
 
 /**
  * 断开 WebSocket 连接
  */
 export function disconnectWebSocket() {
+  shouldReconnect = false
+  clearReconnectTimer()
+  reconnectAttempts = 0
   if (socket) {
     socket.close()
     socket = null

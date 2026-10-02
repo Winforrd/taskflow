@@ -1,4 +1,4 @@
-CREATE DATABASE taskflow
+CREATE DATABASE taskflow;
 USE taskflow;
 
 CREATE TABLE sys_user (
@@ -149,11 +149,11 @@ CREATE TABLE project_member (
                                 role_type VARCHAR(20) NOT NULL
                                     COMMENT '项目角色：MANAGER/MEMBER/READ_ONLY',
 
-                                joined_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMPCOMMENT '加入项目时间',
+                                joined_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '加入项目时间',
 
                                 created_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-                                updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMPON UPDATE CURRENT_TIMESTAMP,
+                                updated_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
                                 UNIQUE KEY uk_project_user (project_id,user_id),
 

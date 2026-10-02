@@ -73,10 +73,13 @@ public class NotificationServiceImpl implements NotificationService {
         // 优先从 Redis 缓存获取
         String countStr = stringRedisTemplate.opsForValue().get(key);
         if (countStr != null) {
-            // 缓存命中，直接返回
-            return Long.parseLong(countStr);
+            long cached = Long.parseLong(countStr);
+            // 缓存异常（如负数）时回源数据库并纠正
+            if (cached >= 0) {
+                return cached;
+            }
         }
-        // 缓存未命中，查询数据库
+        // 缓存未命中或异常，查询数据库
         Long dbCount = notificationMapper.selectCount(new LambdaQueryWrapper<Notification>()
                                                         .eq(Notification::getUserId, currentUserId)
                                                         .eq(Notification::getIsRead, 0));
@@ -113,10 +116,15 @@ public class NotificationServiceImpl implements NotificationService {
         update.setIsRead(1);
         update.setReadTime(LocalDateTime.now());
         notificationMapper.updateById(update);
-        // 同步更新 Redis 未读数量
+        // 同步更新 Redis 未读数量（key 不存在时不创建负值）
         String key = RedisKeyConstant.NOTIFICATION_UNREAD_COUNT + currentUserId;
-        // 减少未读数量
-        stringRedisTemplate.opsForValue().decrement(key);
+        Boolean hasKey = stringRedisTemplate.hasKey(key);
+        if (Boolean.TRUE.equals(hasKey)) {
+            Long val = stringRedisTemplate.opsForValue().decrement(key);
+            if (val != null && val < 0) {
+                stringRedisTemplate.opsForValue().set(key, "0");
+            }
+        }
     }
 
     /**
@@ -161,8 +169,12 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setCreatedTime(LocalDateTime.now());
         notificationMapper.insert(notification);
         // ===== 新增：更新 Redis 未读数量 =====
+        // 仅在缓存已存在时递增，避免 Redis 清空后写成错误的 1
         String key = RedisKeyConstant.NOTIFICATION_UNREAD_COUNT + userId;
-        stringRedisTemplate.opsForValue().increment(key);
+        Boolean hasKey = stringRedisTemplate.hasKey(key);
+        if (Boolean.TRUE.equals(hasKey)) {
+            stringRedisTemplate.opsForValue().increment(key);
+        }
         // ===== 新增：WebSocket 实时推送给目标用户 =====
         Map<String, Object> message = new HashMap<>();
         message.put("type", type.name());

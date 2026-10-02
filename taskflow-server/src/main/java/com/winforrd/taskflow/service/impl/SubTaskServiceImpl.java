@@ -2,6 +2,7 @@ package com.winforrd.taskflow.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.winforrd.taskflow.common.enums.ErrorCode;
 import com.winforrd.taskflow.common.enums.ProjectRole;
 import com.winforrd.taskflow.common.enums.ProjectStatus;
@@ -262,20 +263,24 @@ public class SubTaskServiceImpl implements SubTaskService {
         boolean completed;
         // 判断当前状态是否为完成
         if (TaskStatus.DONE.name().equals(subTask.getStatus())) {
-            // 取消完成
-            subTask.setStatus(TaskStatus.TODO.name());
-            subTask.setCompletedBy(null);
-            subTask.setCompletedTime(null);
+            // 取消完成：必须用 UpdateWrapper 才能把 completed_* 写成 NULL
+            subTaskMapper.update(
+                    null,
+                    new LambdaUpdateWrapper<SubTask>()
+                            .eq(SubTask::getId, subTask.getId())
+                            .set(SubTask::getStatus, TaskStatus.TODO.name())
+                            .set(SubTask::getCompletedBy, null)
+                            .set(SubTask::getCompletedTime, null)
+            );
             completed = false;
         } else {
             // 完成
             subTask.setStatus(TaskStatus.DONE.name());
             subTask.setCompletedBy(currentUserId);
             subTask.setCompletedTime(LocalDateTime.now());
+            subTaskMapper.updateById(subTask);
             completed = true;
         }
-        // 更新子任务
-        subTaskMapper.updateById(subTask);
         // 记录日志
         if (completed) {
             saveActivity(task.getId(), currentUserId, TaskActivityType.COMPLETE_SUB_TASK, "完成了子任务：" + subTask.getTitle());

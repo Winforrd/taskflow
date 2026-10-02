@@ -38,12 +38,26 @@ public class AuthServiceImpl implements AuthService {
         if (count > 0) {
             throw new BusinessException(ErrorCode.USERNAME_EXISTS);
         }
+        //2.1 邮箱唯一（库表有 uk_email；空邮箱不校验）
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            Long emailCount = sysUserMapper.selectCount(
+                    new LambdaQueryWrapper<SysUser>().eq(SysUser::getEmail, request.getEmail().trim())
+            );
+            if (emailCount > 0) {
+                throw new BusinessException(ErrorCode.EMAIL_EXISTS);
+            }
+        }
         //3. 创建用户
-        SysUser user = new SysUser();user.setUsername(request.getUsername());
+        SysUser user = new SysUser();
+        user.setUsername(request.getUsername());
         // BCrypt加密密码
         user.setPassword(PasswordUtil.encode(request.getPassword()));
         user.setNickname(request.getNickname());
-        user.setEmail(request.getEmail());
+        user.setEmail(
+                request.getEmail() == null || request.getEmail().isBlank()
+                        ? null
+                        : request.getEmail().trim()
+        );
         //正常状态
         user.setStatus(1);
         sysUserMapper.insert(user);
