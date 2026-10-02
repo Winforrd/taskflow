@@ -46,17 +46,15 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
     @Override
     @Transactional
     public TeamInvitationVO createInvitation(Long teamId, CreateTeamInvitationRequest request) {
-
+        // 当前用户
         Long currentUserId = StpUtil.getLoginIdAsLong();
         /**
          * 1. 查询团队
          */
         Team team = teamMapper.selectById(teamId);
-
         if (team == null) {
             throw new BusinessException(ErrorCode.TEAM_NOT_FOUND);
         }
-
         /**
          * 2. OWNER / ADMIN
          * 才能创建邀请码
@@ -71,9 +69,9 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
          * READ_ONLY
          */
         String defaultRole = request.getDefaultRole();
+        // 校验默认角色
         boolean validRole = TeamRole.MEMBER.name().equals(defaultRole) || TeamRole.READ_ONLY.name().equals(defaultRole);
-
-
+        // 如果默认角色既不是 MEMBER 也不是 READ_ONLY，则抛出异常
         if (!validRole) {
             throw new BusinessException(ErrorCode.INVITATION_ROLE_INVALID);
         }
@@ -81,13 +79,11 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
          * 4. 参数默认值
          */
         Integer expiresHours = request.getExpiresHours();
-
         if (expiresHours == null) {
             expiresHours = 24;
         }
-
+        // 邀请码使用次数
         Integer maxUses = request.getMaxUses();
-
         if (maxUses == null) {
             maxUses = 1;
         }
@@ -99,7 +95,6 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
          * 6. 创建邀请
          */
         TeamInvitation invitation = new TeamInvitation();
-
         invitation.setTeamId(teamId);
         invitation.setInvitationCode(invitationCode);
         invitation.setCreatorId(currentUserId);
@@ -120,30 +115,28 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
      * 查询当前团队邀请码
      */
     @Override
-    public List<TeamInvitationVO>
-    getTeamInvitations(Long teamId) {
+    public List<TeamInvitationVO> getTeamInvitations(Long teamId) {
+        // 当前用户
         Long currentUserId = StpUtil.getLoginIdAsLong();
         /**
          * OWNER / ADMIN
          */
         teamMemberService.checkAdmin(teamId, currentUserId);
+        // 查询团队
         Team team = teamMapper.selectById(teamId);
         if (team == null) {
             throw new BusinessException(ErrorCode.TEAM_NOT_FOUND);
         }
-
+        // 查询邀请码列表
         List<TeamInvitation> invitationList = teamInvitationMapper.selectList(new LambdaQueryWrapper<TeamInvitation>()
                         .eq(TeamInvitation::getTeamId, teamId).orderByDesc(TeamInvitation::getCreatedTime));
-
-
+        // 转换为 VO 列表
         List<TeamInvitationVO> result = new ArrayList<>();
-
         for (TeamInvitation invitation : invitationList) {
             result.add(convertToVO(invitation, team));
         }
         return result;
     }
-
 
     /**
      * 邀请码预览
@@ -152,18 +145,17 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
     public InvitationPreviewVO
     getInvitationPreview(String invitationCode) {
         TeamInvitation invitation = getInvitationByCode(invitationCode);
-
         /**
          * 校验邀请码
          */
         validateInvitation(invitation);
+        // 查询团队
         Team team = teamMapper.selectById(invitation.getTeamId());
-
         if (team == null) {
             throw new BusinessException(ErrorCode.TEAM_NOT_FOUND);
         }
+        // 转换为 VO
         InvitationPreviewVO vo = new InvitationPreviewVO();
-
         vo.setTeamId(team.getId());
         vo.setTeamName(team.getName());
         vo.setTeamDescription(team.getDescription());
@@ -179,7 +171,7 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
     @Override
     @Transactional
     public Long acceptInvitation(String invitationCode) {
-
+        // 当前用户
         Long currentUserId = StpUtil.getLoginIdAsLong();
         /**
          * 1. 查询邀请码
@@ -203,19 +195,14 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
                         .eq(TeamMember::getTeamId, team.getId())
                         .eq(TeamMember::getUserId, currentUserId)
                         .eq(TeamMember::getMemberStatus, 1));
-
-
+        // 如果用户已经加入该团队，则抛出异常
         if (existingMember != null) {
             throw new BusinessException(ErrorCode.TEAM_MEMBER_ALREADY_EXISTS);
         }
-
         /**
          * 5. 原子消耗一次邀请码
-         *
          * 防止：
-         *
          * maxUses = 1
-         *
          * 两个用户同时接受
          * 最后都成功的问题
          */
@@ -225,13 +212,9 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
                         .gt(TeamInvitation::getExpiresAt, LocalDateTime.now())
                         .lt(TeamInvitation::getUsedCount, invitation.getMaxUses())
                         .setSql("used_count = used_count + 1"));
-
-
         if (affectedRows == 0) {
             throw new BusinessException(ErrorCode.INVITATION_CONSUME_FAILED);
         }
-
-
         /**
          * 6. 创建成员关系
          */
@@ -248,16 +231,13 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
         ) {
             /**
              * team_member 有
-             *
              * UNIQUE(team_id, user_id)
-             *
              * 数据库最后兜底
              */
             throw new BusinessException(ErrorCode.TEAM_MEMBER_ALREADY_EXISTS);
         }
         /**
          * @Transactional
-         *
          * 如果这里成员创建失败，
          * used_count + 1 也会一起回滚。
          */
@@ -270,15 +250,18 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
     @Override
     @Transactional
     public void disableInvitation(Long teamId, Long invitationId) {
+        // 当前用户
         Long currentUserId = StpUtil.getLoginIdAsLong();
         /**
          * OWNER / ADMIN
          */
         teamMemberService.checkAdmin(teamId, currentUserId);
+        // 查询邀请码
         TeamInvitation invitation = teamInvitationMapper.selectById(invitationId);
         if (invitation == null || !teamId.equals(invitation.getTeamId())) {
             throw new BusinessException(ErrorCode.INVITATION_NOT_FOUND);
         }
+        // 禁用邀请码
         TeamInvitation update = new TeamInvitation();
         update.setId(invitationId);
         update.setStatus(0);
@@ -288,9 +271,11 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
      * 根据邀请码查询
      */
     private TeamInvitation getInvitationByCode(String invitationCode) {
+        // 邀请码
         if (invitationCode == null || invitationCode.isBlank()) {
             throw new BusinessException(ErrorCode.INVITATION_NOT_FOUND);
         }
+        // 查询邀请码
         TeamInvitation invitation = teamInvitationMapper.selectOne(new LambdaQueryWrapper<TeamInvitation>()
                         .eq(TeamInvitation::getInvitationCode, invitationCode.trim().toUpperCase()));
         if (invitation == null) {
@@ -298,7 +283,6 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
         }
         return invitation;
     }
-
 
     /**
      * 校验邀请码状态
@@ -329,6 +313,7 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
      * 生成邀请码
      */
     private String generateInvitationCode() {
+        // 随机生成邀请码
         for (int i = 0; i < 5; i++) {
             String code = UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
             Long count = teamInvitationMapper.selectCount(new LambdaQueryWrapper<TeamInvitation>()
@@ -346,7 +331,6 @@ public class TeamInvitationServiceImpl implements TeamInvitationService {
      * Entity 转 VO
      */
     private TeamInvitationVO convertToVO(TeamInvitation invitation, Team team) {
-
         TeamInvitationVO vo = new TeamInvitationVO();
         vo.setId(invitation.getId());
         vo.setTeamId(invitation.getTeamId());

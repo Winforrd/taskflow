@@ -51,24 +51,15 @@ public class ExtensionCapabilityServiceImpl
     /**
      * Spring自动收集所有扩展Provider。
      */
-    private final List<ExtensionProvider>
-            providers;
-
+    private final List<ExtensionProvider> providers;
 
     /**
      * 复用上一阶段统一数据权限。
      */
-    private final DataPermissionService
-            dataPermissionService;
-
+    private final DataPermissionService dataPermissionService;
 
     @Override
-    public List<ExtensionCapabilityVO>
-    getCapabilities(
-            Long projectId
-    ) {
-
-
+    public List<ExtensionCapabilityVO> getCapabilities(Long projectId) {
         /**
          * =================================================
          * 数据权限
@@ -76,68 +67,21 @@ public class ExtensionCapabilityServiceImpl
          *
          * 用户不能查看自己无权访问项目的扩展信息。
          */
-        dataPermissionService.checkProjectView(
-                projectId
-        );
-
-
-        return providers
-                .stream()
-
-                /**
-                 * 保证接口返回顺序稳定。
-                 */
-                .sorted(
-                        Comparator.comparing(
-                                provider ->
-                                        provider
-                                                .getCode()
-                                                .ordinal()
-                        )
-                )
-
-                .map(
-                        this::convert
-                )
-
-                .toList();
+        dataPermissionService.checkProjectView(projectId);
+        return providers.stream().sorted(Comparator.comparing(provider -> provider.getCode().ordinal())).map(this::convert).toList();
     }
 
-
-    private ExtensionCapabilityVO convert(
-            ExtensionProvider provider
-    ) {
-
-
-        ExtensionCapabilityVO vo =
-                new ExtensionCapabilityVO();
-
-
-        vo.setCode(
-                provider
-                        .getCode()
-                        .name()
-        );
-
-
-        vo.setName(
-                provider
-                        .getDisplayName()
-        );
-
-
-        vo.setDescription(
-                provider
-                        .getDescription()
-        );
-
-
-        vo.setEnabled(
-                provider
-                        .isEnabled()
-        );
-
-
+    private ExtensionCapabilityVO convert(ExtensionProvider provider) {
+        // 创建VO对象
+        ExtensionCapabilityVO vo = new ExtensionCapabilityVO();
+        // 设置代码
+        vo.setCode(provider.getCode().name());
+        // 设置名称
+        vo.setName(provider.getDisplayName());
+        // 设置描述
+        vo.setDescription(provider.getDescription());
+        // 设置是否启用
+        vo.setEnabled(provider.isEnabled());
         return vo;
     }
 

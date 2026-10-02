@@ -38,15 +38,7 @@ public interface ProjectCalendarProvider
      * 后续真正实现时，
      * 可以进一步升级成CalendarEventVO。
      */
-    List<Long> listTaskIds(
-
-            Long projectId,
-
-            LocalDate startDate,
-
-            LocalDate endDate
-
-    );
+    List<Long> listTaskIds(Long projectId, LocalDate startDate, LocalDate endDate);
 
 
 }

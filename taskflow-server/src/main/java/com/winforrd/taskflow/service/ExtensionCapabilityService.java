@@ -18,10 +18,7 @@ public interface ExtensionCapabilityService {
     /**
      * 获取当前系统全部扩展能力。
      */
-    List<ExtensionCapabilityVO>
-    getCapabilities(
-            Long projectId
-    );
+    List<ExtensionCapabilityVO> getCapabilities(Long projectId);
 
 
 }

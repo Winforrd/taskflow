@@ -18,18 +18,13 @@ public class SubTaskController {
 
     private final SubTaskService subTaskService;
 
-
     /**
      * 查询任务子任务列表
      */
     @GetMapping("/tasks/{taskId}/subtasks")
-    public Result<List<SubTaskVO>> list(
-            @PathVariable Long taskId
-    ) {
+    public Result<List<SubTaskVO>> list(@PathVariable Long taskId) {
 
-        return Result.success(
-                subTaskService.list(taskId)
-        );
+        return Result.success(subTaskService.list(taskId));
     }
 
 
@@ -37,10 +32,7 @@ public class SubTaskController {
      * 创建子任务
      */
     @PostMapping("/tasks/{taskId}/subtasks")
-    public Result<Void> create(
-            @PathVariable Long taskId,
-            @Valid @RequestBody CreateSubTaskRequest request
-    ) {
+    public Result<Void> create(@PathVariable Long taskId, @Valid @RequestBody CreateSubTaskRequest request) {
 
         subTaskService.create(taskId, request);
 
@@ -52,41 +44,29 @@ public class SubTaskController {
      * 修改子任务
      */
     @PutMapping("/tasks/{taskId}/subtasks/{id}")
-    public Result<Void> update(
-            @PathVariable Long taskId,
-            @PathVariable Long id,
-            @Valid @RequestBody UpdateSubTaskRequest request
-    ) {
+    public Result<Void> update(@PathVariable Long taskId, @PathVariable Long id, @Valid @RequestBody UpdateSubTaskRequest request) {
 
         subTaskService.update(taskId, id, request);
 
         return Result.success();
     }
 
-
     /**
      * 删除子任务
      */
     @DeleteMapping("/tasks/{taskId}/subtasks/{id}")
-    public Result<Void> delete(
-            @PathVariable Long taskId,
-            @PathVariable Long id
-    ) {
+    public Result<Void> delete(@PathVariable Long taskId, @PathVariable Long id) {
 
         subTaskService.delete(taskId, id);
 
         return Result.success();
     }
 
-
     /**
      * 完成 / 取消完成子任务
      */
     @PostMapping("/tasks/{taskId}/subtasks/{id}/status")
-    public Result<Void> changeStatus(
-            @PathVariable Long taskId,
-            @PathVariable Long id
-    ) {
+    public Result<Void> changeStatus(@PathVariable Long taskId, @PathVariable Long id) {
 
         subTaskService.changeStatus(taskId, id);
 

@@ -35,43 +35,19 @@ public interface TaskApprovalProvider
     /**
      * 提交任务审批。
      */
-    void submit(
-
-            Long taskId,
-
-            Long operatorId,
-
-            String comment
-
-    );
+    void submit(Long taskId, Long operatorId, String comment);
 
 
     /**
      * 审批通过。
      */
-    void approve(
-
-            Long taskId,
-
-            Long operatorId,
-
-            String comment
-
-    );
+    void approve(Long taskId, Long operatorId, String comment);
 
 
     /**
      * 审批拒绝。
      */
-    void reject(
-
-            Long taskId,
-
-            Long operatorId,
-
-            String comment
-
-    );
+    void reject(Long taskId, Long operatorId, String comment);
 
 
 }

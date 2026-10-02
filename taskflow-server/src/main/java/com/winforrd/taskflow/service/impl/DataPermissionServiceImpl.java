@@ -25,12 +25,9 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class DataPermissionServiceImpl implements DataPermissionService {
 
-
     private final ProjectMemberService projectMemberService;
 
-
     private final TaskMapper taskMapper;
-
 
     /**
      * =====================================================
@@ -53,24 +50,14 @@ public class DataPermissionServiceImpl implements DataPermissionService {
      */
     @Override
     public void checkProjectView(Long projectId) {
-
-
+        // 项目ID不能为空
         if (projectId == null) {
-
-            throw new BusinessException(
-                    "项目ID不能为空"
-            );
+            throw new BusinessException("项目ID不能为空");
         }
-
-
-        Long currentUserId =
-                StpUtil.getLoginIdAsLong();
-
-
-        projectMemberService.checkCanView(
-                projectId,
-                currentUserId
-        );
+        // 当前用户ID
+        Long currentUserId = StpUtil.getLoginIdAsLong();
+        // 检查当前用户是否有权限查看该项目
+        projectMemberService.checkCanView(projectId, currentUserId);
     }
 
 
@@ -80,36 +67,17 @@ public class DataPermissionServiceImpl implements DataPermissionService {
      * =====================================================
      */
     @Override
-    public void checkTaskView(
-            Long taskId
-    ) {
-
-
+    public void checkTaskView(Long taskId) {
         if (taskId == null) {
-
-            throw new BusinessException(
-                    "任务ID不能为空"
-            );
+            throw new BusinessException("任务ID不能为空");
         }
-
-
-        Task task =
-                taskMapper.selectById(
-                        taskId
-                );
-
-
+        // 任务ID不能为空
+        Task task = taskMapper.selectById(taskId);
         if (task == null) {
-
-            throw new BusinessException(
-                    "任务不存在"
-            );
+            throw new BusinessException("任务不存在");
         }
-
-
-        checkProjectView(
-                task.getProjectId()
-        );
+        // 检查当前用户是否有权限查看该项目
+        checkProjectView(task.getProjectId());
     }
 
 

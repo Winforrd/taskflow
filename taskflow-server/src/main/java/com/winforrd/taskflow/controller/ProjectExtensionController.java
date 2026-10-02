@@ -34,8 +34,7 @@ import java.util.List;
 public class ProjectExtensionController {
 
 
-    private final ExtensionCapabilityService
-            extensionCapabilityService;
+    private final ExtensionCapabilityService extensionCapabilityService;
 
 
     /**
@@ -48,23 +47,8 @@ public class ProjectExtensionController {
      * /api/projects/{projectId}/extensions/capabilities
      */
     @GetMapping("/{projectId}/extensions/capabilities")
-    public Result<List<ExtensionCapabilityVO>>
-    getCapabilities(
-
-            @PathVariable
-            Long projectId
-
-    ) {
-
-
-        return Result.success(
-
-                extensionCapabilityService
-                        .getCapabilities(
-                                projectId
-                        )
-
-        );
+    public Result<List<ExtensionCapabilityVO>> getCapabilities(@PathVariable Long projectId) {
+        return Result.success(extensionCapabilityService.getCapabilities(projectId));
     }
 
 

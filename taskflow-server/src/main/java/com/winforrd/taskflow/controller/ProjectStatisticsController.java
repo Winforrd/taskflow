@@ -21,9 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 
 @RestController
-@RequestMapping(
-        "/api/projects"
-)
+@RequestMapping("/api/projects")
 @RequiredArgsConstructor
 public class ProjectStatisticsController {
 
@@ -42,7 +40,6 @@ public class ProjectStatisticsController {
      */
     @GetMapping("/{projectId}/statistics")
     public Result<ProjectStatisticsVO> getStatistics(@PathVariable Long projectId) {
-
 
         return Result.success(projectStatisticsService.getStatistics(projectId));
     }

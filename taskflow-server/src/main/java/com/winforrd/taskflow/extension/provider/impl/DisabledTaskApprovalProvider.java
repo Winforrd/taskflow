@@ -51,55 +51,26 @@ public class DisabledTaskApprovalProvider implements TaskApprovalProvider {
 
 
     @Override
-    public void submit(
-
-            Long taskId,
-
-            Long operatorId,
-
-            String comment
-
-    ) {
-
+    public void submit(Long taskId, Long operatorId, String comment) {
         throw disabled();
     }
 
 
     @Override
-    public void approve(
-
-            Long taskId,
-
-            Long operatorId,
-
-            String comment
-
-    ) {
-
+    public void approve(Long taskId, Long operatorId, String comment) {
         throw disabled();
     }
 
 
     @Override
-    public void reject(
-
-            Long taskId,
-
-            Long operatorId,
-
-            String comment
-
-    ) {
-
+    public void reject(Long taskId, Long operatorId, String comment) {
         throw disabled();
     }
 
 
     private BusinessException disabled() {
 
-        return new BusinessException(
-                "审批流扩展尚未启用"
-        );
+        return new BusinessException("审批流扩展尚未启用");
     }
 
 

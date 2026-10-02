@@ -50,32 +50,16 @@ public class DisabledWorktimeProvider
 
 
     @Override
-    public Long record(
+    public Long record(Long taskId, Long userId, Integer minutes, String description) {
 
-            Long taskId,
-
-            Long userId,
-
-            Integer minutes,
-
-            String description
-
-    ) {
-
-        throw new BusinessException(
-                "工时扩展尚未启用"
-        );
+        throw new BusinessException("工时扩展尚未启用");
     }
 
 
     @Override
-    public Long getTaskTotalMinutes(
-            Long taskId
-    ) {
+    public Long getTaskTotalMinutes(Long taskId) {
 
-        throw new BusinessException(
-                "工时扩展尚未启用"
-        );
+        throw new BusinessException("工时扩展尚未启用");
     }
 
 

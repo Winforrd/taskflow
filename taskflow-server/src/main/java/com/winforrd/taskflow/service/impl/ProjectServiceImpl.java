@@ -35,8 +35,7 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class ProjectServiceImpl
-        implements ProjectService {
+public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectMapper projectMapper;
 
@@ -55,7 +54,9 @@ public class ProjectServiceImpl
     @Override
     @Transactional
     public Long createProject(Long teamId, CreateProjectRequest request) {
+        // 获取当前用户ID
         Long currentUserId = StpUtil.getLoginIdAsLong();
+        // 获取团队信息
         Team team = teamMapper.selectById(teamId);
         if (team == null) {
             throw new BusinessException(ErrorCode.TEAM_NOT_FOUND);
@@ -72,7 +73,9 @@ public class ProjectServiceImpl
         if (ownerTeamMember == null) {
             throw new BusinessException(ErrorCode.PROJECT_MEMBER_NOT_TEAM_MEMBER);
         }
+        // 校验日期
         checkDate(request.getStartDate(), request.getDeadline());
+        // 创建项目
         Project project = new Project();
         project.setTeamId(teamId);
         project.setProjectCode(generateProjectCode(teamId));
@@ -86,18 +89,12 @@ public class ProjectServiceImpl
         projectMapper.insert(project);
         /**
          * 项目负责人自动加入项目
-         *
          * project_member 中：
-         *
          * role_type = MANAGER
-         *
          * 但是！
-         *
          * 他是否是负责人，
          * 仍然必须通过：
-         *
          * project.owner_id
-         *
          * 判断。
          */
         ProjectMember ownerMember = new ProjectMember();
@@ -113,15 +110,19 @@ public class ProjectServiceImpl
      */
     @Override
     public List<ProjectVO> getTeamProjects(Long teamId) {
+        // 获取当前用户ID
         Long currentUserId = StpUtil.getLoginIdAsLong();
+        // 获取团队信息
         Team team = teamMapper.selectById(teamId);
         if (team == null) {
             throw new BusinessException(ErrorCode.TEAM_NOT_FOUND);
         }
+        // 获取当前用户在团队中的信息
         TeamMember currentTeamMember = teamMemberService.getTeamMember(teamId, currentUserId);
         if (currentTeamMember == null) {
             throw new BusinessException(ErrorCode.NOT_TEAM_MEMBER);
         }
+        // 获取团队项目列表
         List<Project> projects;
         boolean teamAdmin = TeamRole.OWNER.name().equals(currentTeamMember.getRoleType()) || TeamRole.ADMIN.name().equals(currentTeamMember.getRoleType());
         /**
@@ -145,6 +146,7 @@ public class ProjectServiceImpl
             }
             projects = projectMapper.selectList(new LambdaQueryWrapper<Project>().eq(Project::getTeamId, teamId).in(Project::getId, projectIds).orderByDesc(Project::getCreatedTime));
         }
+        // 转换项目列表
         List<ProjectVO> result = new ArrayList<>();
         for (Project project : projects) {
             result.add(convertProjectVO(project, currentUserId));
@@ -156,12 +158,19 @@ public class ProjectServiceImpl
      */
     @Override
     public ProjectDetailVO getProjectDetail(Long projectId) {
+        // 获取当前用户ID
         Long currentUserId = StpUtil.getLoginIdAsLong();
+        // 获取项目信息
         Project project = getProjectOrThrow(projectId);
+        // 检查项目可见性
         projectMemberService.checkCanView(projectId, currentUserId);
+        // 获取团队成员信息
         TeamMember teamMember = teamMemberService.getTeamMember(project.getTeamId(), currentUserId);
+        // 获取项目成员信息
         ProjectMember projectMember = projectMemberService.getProjectMember(projectId, currentUserId);
+        // 获取项目负责人信息
         SysUser owner = sysUserMapper.selectById(project.getOwnerId());
+        // 获取项目成员数量
         Long memberCount = projectMemberMapper.selectCount(new LambdaQueryWrapper<ProjectMember>().eq(ProjectMember::getProjectId, projectId));
         /**
          * 是否可以编辑
@@ -171,6 +180,7 @@ public class ProjectServiceImpl
          * 是否拥有核心管理权限
          */
         boolean canManageProject = calculateCanManageProject(project, teamMember, currentUserId);
+        // 转换项目详情
         ProjectDetailVO vo = new ProjectDetailVO();
         vo.setId(project.getId());
         vo.setTeamId(project.getTeamId());
@@ -190,25 +200,30 @@ public class ProjectServiceImpl
         vo.setCreatedTime(project.getCreatedTime());
         return vo;
     }
+
     /**
      * 编辑项目
-     *
      * MANAGER 可以
      */
     @Override
     @Transactional
     public void updateProject(Long projectId, UpdateProjectRequest request) {
+        // 获取当前用户ID
         Long currentUserId = StpUtil.getLoginIdAsLong();
+        // 获取项目信息
         Project project = getProjectOrThrow(projectId);
+        // 检查项目归档状态
         checkNotArchived(project);
         /**
          * 编辑权限
-         *
          * MANAGER 可以通过
          */
         projectMemberService.checkCanEditProject(projectId, currentUserId);
+        // 校验日期
         checkDate(request.getStartDate(), request.getDeadline());
+        // 校验项目状态
         validateProjectStatus(request.getStatus());
+        // 准备更新数据
         Project update =new Project();
         update.setId(projectId);
         update.setName(request.getName());
@@ -226,17 +241,19 @@ public class ProjectServiceImpl
     @Override
     @Transactional
     public void archiveProject(Long projectId) {
+        // 获取当前用户ID
         Long currentUserId = StpUtil.getLoginIdAsLong();
+        // 获取项目信息
         Project project = getProjectOrThrow(projectId);
         if (ProjectStatus.ARCHIVED.name().equals(project.getStatus())) {
             return;
         }
         /**
          * 核心管理权限
-         *
          * MANAGER 无法通过
          */
         projectMemberService.checkCanManageProject(projectId, currentUserId);
+        // 归档项目
         Project update = new Project();
         update.setId(projectId);
         update.setStatus(ProjectStatus.ARCHIVED.name());
@@ -248,6 +265,7 @@ public class ProjectServiceImpl
      * 获取项目
      */
     private Project getProjectOrThrow(Long projectId) {
+        // 获取项目信息
         Project project = projectMapper.selectById(projectId);
         if (project == null) {
             throw new BusinessException(ErrorCode.PROJECT_NOT_FOUND);
@@ -258,6 +276,7 @@ public class ProjectServiceImpl
      * 项目列表转换
      */
     private ProjectVO convertProjectVO(Project project, Long currentUserId) {
+        // 转换项目列表
         ProjectVO vo = new ProjectVO();
         SysUser owner = sysUserMapper.selectById(project.getOwnerId());
         ProjectMember currentMember = projectMemberService.getProjectMember(project.getId(), currentUserId);
@@ -281,8 +300,8 @@ public class ProjectServiceImpl
      * 生成项目编号
      */
     private String generateProjectCode(Long teamId) {
+        // 生成项目编号
         for (int i = 0; i < 5; i++) {
-
             String code = "PRJ-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
             Long count = projectMapper.selectCount(new LambdaQueryWrapper<Project>().eq(Project::getTeamId, teamId).eq(Project::getProjectCode, code));
             if (count == 0) {
@@ -295,6 +314,7 @@ public class ProjectServiceImpl
      * 日期校验
      */
     private void checkDate(LocalDate startDate, LocalDate deadline) {
+        // 日期校验
         if (startDate != null && deadline != null && deadline.isBefore(startDate)) {
             throw new BusinessException(ErrorCode.PROJECT_DATE_INVALID);
         }

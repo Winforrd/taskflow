@@ -30,9 +30,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class UserAvatarController {
 
-
-    private final UserAvatarService
-            userAvatarService;
+    private final UserAvatarService userAvatarService;
 
 
     /**
@@ -49,29 +47,10 @@ public class UserAvatarController {
      * multipart/form-data
      */
     @PostMapping
-    public Result<AvatarUploadVO>
-    uploadAvatar(
+    public Result<AvatarUploadVO> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        String avatar = userAvatarService.uploadAvatar(file);
 
-            @RequestParam("file")
-            MultipartFile file
-
-    ) {
-
-
-        String avatar =
-                userAvatarService
-                        .uploadAvatar(
-                                file
-                        );
-
-
-        return Result.success(
-
-                new AvatarUploadVO(
-                        avatar
-                )
-
-        );
+        return Result.success(new AvatarUploadVO(avatar));
     }
 
 
@@ -85,13 +64,9 @@ public class UserAvatarController {
      * /api/users/avatar
      */
     @DeleteMapping
-    public Result<Void>
-    removeAvatar() {
+    public Result<Void> removeAvatar() {
 
-
-        userAvatarService
-                .removeAvatar();
-
+        userAvatarService.removeAvatar();
 
         return Result.success();
     }

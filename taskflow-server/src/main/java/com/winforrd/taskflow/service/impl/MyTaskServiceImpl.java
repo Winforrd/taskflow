@@ -17,8 +17,7 @@ import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
-public class MyTaskServiceImpl
-        implements MyTaskService {
+public class MyTaskServiceImpl implements MyTaskService {
 
     private final MyTaskMapper myTaskMapper;
 
@@ -29,13 +28,9 @@ public class MyTaskServiceImpl
      * =====================================================
      */
     @Override
-    public PageResult<MyTaskVO> getMyTasks(
-            MyTaskQuery query
-    ) {
+    public PageResult<MyTaskVO> getMyTasks(MyTaskQuery query) {
 
-        Long currentUserId =
-                StpUtil.getLoginIdAsLong();
-
+        Long currentUserId = StpUtil.getLoginIdAsLong();
 
         /**
          * =================================================
@@ -45,51 +40,28 @@ public class MyTaskServiceImpl
          * 如果前端没有传 type，
          * 默认查询“我负责的任务”。
          */
-        MyTaskType type =
-                query.getType() == null
-
-                        ? MyTaskType.ASSIGNED
-
-                        : query.getType();
-
+        MyTaskType type = query.getType() == null ? MyTaskType.ASSIGNED : query.getType();
 
         /**
          * =================================================
          * 2. 清理关键词
          * =================================================
          */
-        String keyword =
-                StringUtils.hasText(
-                        query.getKeyword()
-                )
-
-                        ? query.getKeyword().trim()
-
-                        : null;
-
+        String keyword = StringUtils.hasText(query.getKeyword()) ? query.getKeyword().trim() : null;
 
         /**
          * =================================================
          * 3. 校验任务状态
          * =================================================
          */
-        String status =
-                validateStatus(
-                        query.getStatus()
-                );
-
+        String status = validateStatus(query.getStatus());
 
         /**
          * =================================================
          * 4. 创建分页对象
          * =================================================
          */
-        Page<MyTaskVO> page =
-                new Page<>(
-                        query.getPageNum(),
-                        query.getPageSize()
-                );
-
+        Page<MyTaskVO> page = new Page<>(query.getPageNum(), query.getPageSize());
 
         /**
          * =================================================
@@ -124,50 +96,26 @@ public class MyTaskServiceImpl
          * “按照原 SQL 结构生成 COUNT，
          * 不要擅自优化。”
          */
-        page.setOptimizeCountSql(
-                false
-        );
-
-
+        page.setOptimizeCountSql(false);
         /**
          * 同时关闭 JOIN COUNT 优化。
          *
          * 对复杂 JOIN 查询更加稳妥。
          */
-        page.setOptimizeJoinOfCountSql(
-                false
-        );
-
-
+        page.setOptimizeJoinOfCountSql(false);
         IPage<MyTaskVO> result;
-
-
         /**
          * =================================================
          * 5. 根据任务分类执行不同查询
          * =================================================
          */
         switch (type) {
-
             /**
              * ---------------------------------------------
              * 我负责的
              * ---------------------------------------------
              */
-            case ASSIGNED ->
-
-                    result =
-                            myTaskMapper
-                                    .selectAssignedTasks(
-
-                                            page,
-
-                                            currentUserId,
-
-                                            keyword,
-
-                                            status
-                                    );
+            case ASSIGNED -> result = myTaskMapper.selectAssignedTasks(page, currentUserId, keyword, status);
 
 
             /**
@@ -175,21 +123,7 @@ public class MyTaskServiceImpl
              * 我创建的
              * ---------------------------------------------
              */
-            case CREATED ->
-
-                    result =
-                            myTaskMapper
-                                    .selectCreatedTasks(
-
-                                            page,
-
-                                            currentUserId,
-
-                                            keyword,
-
-                                            status
-                                    );
-
+            case CREATED -> result = myTaskMapper.selectCreatedTasks(page, currentUserId, keyword, status);
 
             /**
              * ---------------------------------------------

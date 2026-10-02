@@ -17,10 +17,7 @@ public interface UserAvatarService {
      *
      * @return 头像访问地址
      */
-    String uploadAvatar(
-            MultipartFile file
-    );
-
+    String uploadAvatar(MultipartFile file);
 
     /**
      * 删除当前用户头像。

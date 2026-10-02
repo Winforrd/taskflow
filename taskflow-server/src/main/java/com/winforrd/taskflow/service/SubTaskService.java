@@ -16,35 +16,22 @@ public interface SubTaskService {
     /**
      * 创建子任务
      */
-    void create(
-            Long taskId,
-            CreateSubTaskRequest request
-    );
+    void create(Long taskId, CreateSubTaskRequest request);
 
     /**
      * 修改子任务
      */
-    void update(
-            Long taskId,
-            Long id,
-            UpdateSubTaskRequest request
-    );
+    void update(Long taskId, Long id, UpdateSubTaskRequest request);
 
     /**
      * 删除子任务
      */
-    void delete(
-            Long taskId,
-            Long id
-    );
+    void delete(Long taskId, Long id);
 
     /**
      * 完成 / 取消完成
      */
-    void changeStatus(
-            Long taskId,
-            Long id
-    );
+    void changeStatus(Long taskId, Long id);
 
     /**
      * 是否存在未完成必需子任务
@@ -54,8 +41,5 @@ public interface SubTaskService {
     /**
      * 当前用户是否可以创建子任务
      */
-    boolean canCreateSubTask(
-            Long taskId,
-            Long userId
-    );
+    boolean canCreateSubTask(Long taskId, Long userId);
 }

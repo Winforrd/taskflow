@@ -53,15 +53,7 @@ public class DisabledSmartAssignmentProvider
 
 
     @Override
-    public List<Long> recommend(
-
-            Long projectId,
-
-            Long taskId,
-
-            Integer limit
-
-    ) {
+    public List<Long> recommend(Long projectId, Long taskId, Integer limit) {
 
         throw new BusinessException(
                 "智能任务分派扩展尚未启用"

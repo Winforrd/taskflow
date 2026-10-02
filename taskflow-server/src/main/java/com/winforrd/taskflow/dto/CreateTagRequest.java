@@ -12,15 +12,9 @@ import lombok.Data;
 public class CreateTagRequest {
 
 
-    @NotBlank(
-            message = "标签名称不能为空"
-    )
-    @Size(
-            max = 50,
-            message = "标签名称不能超过50个字符"
-    )
+    @NotBlank(message = "标签名称不能为空")
+    @Size(max = 50, message = "标签名称不能超过50个字符")
     private String name;
-
 
     /**
      * 前端传：

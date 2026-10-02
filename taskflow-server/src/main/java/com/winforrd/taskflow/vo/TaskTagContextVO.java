@@ -14,13 +14,10 @@ public class TaskTagContextVO {
 
     private Long taskId;
 
-
     /**
      * 当前任务已经绑定。
      */
-    private List<TagVO> selectedTags =
-            new ArrayList<>();
-
+    private List<TagVO> selectedTags = new ArrayList<>();
 
     /**
      * 当前任务允许使用：
@@ -29,9 +26,7 @@ public class TaskTagContextVO {
      * +
      * 当前项目标签
      */
-    private List<TagVO> availableTags =
-            new ArrayList<>();
-
+    private List<TagVO> availableTags = new ArrayList<>();
 
     /**
      * 当前用户是否能够修改任务标签。

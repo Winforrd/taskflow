@@ -30,39 +30,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OperationLogController {
 
-
     private final OperationLogService operationLogService;
-
-
     /**
-     * =====================================================
-     * 项目操作日志
-     * =====================================================
-     *
-     * GET
-     *
-     * /api/projects/{projectId}/operation-logs
+     * 获取项目操作日志
      */
     @GetMapping("/{projectId}/operation-logs")
     public Result<List<OperationLogVO>> getProjectOperationLogs(@PathVariable Long projectId, @RequestParam(required = false) String module, @RequestParam(required = false) Boolean success, @RequestParam(required = false) String keyword) {
 
-
-        return Result.success(
-
-                operationLogService
-                        .getProjectLogs(
-
-                                projectId,
-
-                                module,
-
-                                success,
-
-                                keyword
-
-                        )
-        );
+        return Result.success(operationLogService.getProjectLogs(projectId, module, success, keyword));
     }
-
-
 }

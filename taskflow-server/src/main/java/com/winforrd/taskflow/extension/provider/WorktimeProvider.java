@@ -25,25 +25,13 @@ public interface WorktimeProvider
      *
      * @return 将来可以返回work_log主键ID
      */
-    Long record(
-
-            Long taskId,
-
-            Long userId,
-
-            Integer minutes,
-
-            String description
-
-    );
+    Long record(Long taskId, Long userId, Integer minutes, String description);
 
 
     /**
      * 查询任务累计工时。
      */
-    Long getTaskTotalMinutes(
-            Long taskId
-    );
+    Long getTaskTotalMinutes(Long taskId);
 
 
 }

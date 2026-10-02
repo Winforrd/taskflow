@@ -27,18 +27,12 @@ public class DisabledProjectCalendarProvider
 
 
     @Override
-    public ExtensionCode getCode() {
-
-        return ExtensionCode.CALENDAR;
-    }
-
+    public ExtensionCode getCode() {return ExtensionCode.CALENDAR;}
 
     @Override
     public String getDisplayName() {
-
         return "项目日历";
     }
-
 
     @Override
     public String getDescription() {
@@ -55,19 +49,9 @@ public class DisabledProjectCalendarProvider
 
 
     @Override
-    public List<Long> listTaskIds(
+    public List<Long> listTaskIds(Long projectId, LocalDate startDate, LocalDate endDate) {
 
-            Long projectId,
-
-            LocalDate startDate,
-
-            LocalDate endDate
-
-    ) {
-
-        throw new BusinessException(
-                "项目日历扩展尚未启用"
-        );
+        throw new BusinessException("项目日历扩展尚未启用");
     }
 
 

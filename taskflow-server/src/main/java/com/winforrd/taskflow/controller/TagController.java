@@ -45,58 +45,17 @@ public class TagController {
      * 团队标签
      * =====================================================
      */
-    @GetMapping(
-            "/api/teams/{teamId}/tags"
-    )
-    public Result<TagCollectionVO>
-    getTeamTags(
-
-            @PathVariable
-            Long teamId
-
-    ) {
-
-
-        return Result.success(
-
-                tagService.getTeamTags(
-                        teamId
-                )
-
-        );
+    @GetMapping("/api/teams/{teamId}/tags")
+    public Result<TagCollectionVO> getTeamTags(@PathVariable Long teamId) {
+        return Result.success(tagService.getTeamTags(teamId));
     }
-
 
     /**
      * 创建团队标签。
      */
-    @PostMapping(
-            "/api/teams/{teamId}/tags"
-    )
-    public Result<TagVO>
-    createTeamTag(
-
-            @PathVariable
-            Long teamId,
-
-            @Valid
-            @RequestBody
-            CreateTagRequest request
-
-    ) {
-
-
-        return Result.success(
-
-                tagService.createTeamTag(
-
-                        teamId,
-
-                        request
-
-                )
-
-        );
+    @PostMapping("/api/teams/{teamId}/tags")
+    public Result<TagVO> createTeamTag(@PathVariable Long teamId, @Valid @RequestBody CreateTagRequest request) {
+        return Result.success(tagService.createTeamTag(teamId, request));
     }
 
 
@@ -105,170 +64,59 @@ public class TagController {
      * 项目标签
      * =====================================================
      */
-    @GetMapping(
-            "/api/projects/{projectId}/tags"
-    )
-    public Result<TagCollectionVO>
-    getProjectTags(
+    @GetMapping("/api/projects/{projectId}/tags")
+    public Result<TagCollectionVO> getProjectTags(@PathVariable Long projectId) {
 
-            @PathVariable
-            Long projectId
-
-    ) {
-
-
-        return Result.success(
-
-                tagService.getProjectTags(
-                        projectId
-                )
-
-        );
+        return Result.success(tagService.getProjectTags(projectId));
     }
 
 
     /**
      * 创建项目标签。
      */
-    @PostMapping(
-            "/api/projects/{projectId}/tags"
-    )
-    public Result<TagVO>
-    createProjectTag(
+    @PostMapping("/api/projects/{projectId}/tags")
+    public Result<TagVO> createProjectTag(@PathVariable Long projectId, @Valid @RequestBody CreateTagRequest request) {
 
-            @PathVariable
-            Long projectId,
-
-            @Valid
-            @RequestBody
-            CreateTagRequest request
-
-    ) {
-
-
-        return Result.success(
-
-                tagService.createProjectTag(
-
-                        projectId,
-
-                        request
-
-                )
-
-        );
+        return Result.success(tagService.createProjectTag(projectId, request));
     }
-
 
     /**
      * 修改标签。
      */
-    @PutMapping(
-            "/api/tags/{tagId}"
-    )
-    public Result<Void>
-    updateTag(
-
-            @PathVariable
-            Long tagId,
-
-            @Valid
-            @RequestBody
-            UpdateTagRequest request
-
-    ) {
-
-
-        tagService.updateTag(
-
-                tagId,
-
-                request
-
-        );
-
-
+    @PutMapping("/api/tags/{tagId}")
+    public Result<Void> updateTag(@PathVariable Long tagId, @Valid @RequestBody UpdateTagRequest request) {
+        tagService.updateTag(tagId, request);
         return Result.success();
     }
-
 
     /**
      * 删除标签。
      */
-    @DeleteMapping(
-            "/api/tags/{tagId}"
-    )
-    public Result<Void>
-    deleteTag(
-
-            @PathVariable
-            Long tagId
-
-    ) {
-
-
-        tagService.deleteTag(
-                tagId
-        );
-
-
+    @DeleteMapping("/api/tags/{tagId}")
+    public Result<Void> deleteTag(@PathVariable Long tagId) {
+        tagService.deleteTag(tagId);
         return Result.success();
     }
-
 
     /**
      * =====================================================
      * 任务标签
      * =====================================================
      */
-    @GetMapping(
-            "/api/tasks/{taskId}/tags"
-    )
-    public Result<TaskTagContextVO>
-    getTaskTags(
+    @GetMapping("/api/tasks/{taskId}/tags")
+    public Result<TaskTagContextVO> getTaskTags(@PathVariable Long taskId) {
 
-            @PathVariable
-            Long taskId
-
-    ) {
-
-
-        return Result.success(
-
-                tagService.getTaskTagContext(
-                        taskId
-                )
-
-        );
+        return Result.success(tagService.getTaskTagContext(taskId));
     }
 
 
     /**
      * 完整覆盖当前任务标签。
      */
-    @PutMapping(
-            "/api/tasks/{taskId}/tags"
-    )
-    public Result<Void>
-    updateTaskTags(
+    @PutMapping("/api/tasks/{taskId}/tags")
+    public Result<Void> updateTaskTags(@PathVariable Long taskId, @RequestBody UpdateTaskTagsRequest request) {
 
-            @PathVariable
-            Long taskId,
-
-            @RequestBody
-            UpdateTaskTagsRequest request
-
-    ) {
-
-
-        tagService.updateTaskTags(
-
-                taskId,
-
-                request
-
-        );
-
+        tagService.updateTaskTags(taskId, request);
 
         return Result.success();
     }

@@ -37,15 +37,7 @@ public interface SmartAssignmentProvider
         extends ExtensionProvider {
 
 
-    List<Long> recommend(
-
-            Long projectId,
-
-            Long taskId,
-
-            Integer limit
-
-    );
+    List<Long> recommend(Long projectId, Long taskId, Integer limit);
 
 
 }
